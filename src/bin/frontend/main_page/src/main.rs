@@ -97,12 +97,12 @@ impl Component for Menu {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         let onclick = |message: Self::Message| _ctx.link().callback(move |_| message.clone());
         html! {
-            <div classes={"base_page"} style={"background-color: blue;"}>
-                <h2 class={"font"}>{ format!("{} Player Battleship", self.number_of_players) }</h2>
-                <div classes={classes!("menu_screen", "font")}>
-                    <button class={"menu_button"} onclick={onclick(Self::Message::AddPlayer)}>{ "Add Player" }</button>
-                    <button class={"menu_button"} onclick={onclick(Self::Message::SubtractPlayer)}>{ "Subtract Player" }</button>
-                    <button class={"menu_button"} onclick={onclick(Self::Message::Send(self.number_of_players.clone()))}>{ "Start Game" }</button>
+            <div class={"sky_base"}>
+                <h2 class={"font"} style={"font-size: 36px;"}>{ format!("{} Player Free-for-all Battleship", self.number_of_players) }</h2>
+                <div class={classes!("menu_screen", "font")}>
+                    <button class={classes!("menu_button", "button_col_0")} onclick={onclick(Self::Message::AddPlayer)}>{ "Add Player" }</button>
+                    <button class={classes!("menu_button", "button_col_1")} onclick={onclick(Self::Message::SubtractPlayer)}>{ "Subtract Player" }</button>
+                    <button class={classes!("menu_button", "button_col_2")} onclick={onclick(Self::Message::Send(self.number_of_players.clone()))}>{ "Start Game" }</button>
                 </div>
                 <div>
                     <ul>{
