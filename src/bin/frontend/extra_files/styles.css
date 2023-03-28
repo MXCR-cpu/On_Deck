@@ -14,10 +14,19 @@ html {
 	background-color: var(--sky_color);
 }
 
-.font {
+.font_header {
 	font-family: "Helvetica", sans-serif;
 	color: white;
 	padding-bottom: 30px;
+}
+
+.links_base {
+	padding-top: 30px;
+}
+
+.font {
+	font-family: "Helvetica", sans-serif;
+	color: white;
 }
 
 .sky_base {
@@ -41,11 +50,10 @@ html {
 	grid-gap: calc(var(--standard_radius) * 2);
 }
 
-.menu_button > button {
-	height: var(--button_height);
+.menu_screen > button {
+	height: auto;
 	width: auto;
-	background-color: blue;
-	border-radius: var(--standard_radius);
+	border-radius: var(--standard_radius) !important;
 }
 
 .menu_button:hover {
