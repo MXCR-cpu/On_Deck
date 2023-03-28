@@ -1,0 +1,25 @@
+[package]
+name = "battleship"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "backend"
+test = false
+bench = false
+
+[default.databases.redis]
+url = "redis://default:redispw@localhost:55001"
+
+[dependencies]
+deadpool = "0.9.5"
+juniper = "0.15.11"
+juniper_rocket = "0.8.2"
+rand = "0.8.5"
+redis = { version = "0.22.3", features = ["tokio-comp", "aio", "connection-manager", "r2d2", "json"] }
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
+rocket_db_pools = { version = "0.1.0-rc.2", features = ["deadpool_redis"] }
+serde = "1.0.157"
+serde_json = "1.0.94"
+
