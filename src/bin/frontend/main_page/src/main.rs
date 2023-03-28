@@ -97,7 +97,7 @@ impl Component for Menu {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         let onclick = |message: Self::Message| _ctx.link().callback(move |_| message.clone());
         html! {
-            <div classes={"base_page"} style={"background-color: lightblue;"}>
+            <div classes={"base_page"} style={"background-color: blue;"}>
                 <h2 class={"font"}>{ format!("{} Player Battleship", self.number_of_players) }</h2>
                 <div classes={classes!("menu_screen", "font")}>
                     <button class={"menu_button"} onclick={onclick(Self::Message::AddPlayer)}>{ "Add Player" }</button>
