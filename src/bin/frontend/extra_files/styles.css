@@ -58,6 +58,7 @@
 .top_row > button {
 	height: auto;
 	width: calc(var(--button_width) / 3);
+	font-size: 16px;
 	border-radius: var(--standard_radius) !important;
 	border-color: transparent !important;
 	background-color: var(--button_color_dormant);
