@@ -2,6 +2,7 @@
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
+use web_sys::{Window, Storage};
 use yew::classes;
 use yew::prelude::*;
 use yew::{
@@ -9,22 +10,21 @@ use yew::{
     virtual_dom::{ApplyAttributeAs, Attributes},
     AttrValue,
 };
-use state::Storage;
+
+mod error;
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
-static GLOBAL_MAP: Storage<&'static str> = Storage::new();
 
-// #[derive(Serialize, Deserialize, Clone)]
-// pub struct Links {
-//     hyperlinks: Vec<String>,
-// }
 
+#[allow(dead_code)]
 pub struct Menu {
     number_of_players: u8,
     links: Option<Attributes>,
     day: bool,
-    player_id: u32,
+    player_id: String,
+    window: Window,
+    storage: Storage,
 }
 
 #[derive(Clone)]
@@ -36,7 +36,7 @@ pub enum MenuMsg {
     Sent,
     NotSending,
     ReceivedLinks(Vec<String>),
-    ReceivedId(u32),
+    ReceivedId(String),
     NotReceived,
     None,
 }
@@ -46,19 +46,42 @@ impl Component for Menu {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        _ctx
-            .link()
-            .send_future(async move {
-                match get_request::<u32>("http://127.0.0.1:8000/get_player_id").await {
-                    Ok(player_id) => Self::Message::ReceivedId(player_id),
-                    Err(_) => Self::Message::NotReceived,
-                }
-            });
+        let window: Window = match web_sys::window() {
+            Some(window) => window,
+            None => log_error("battleship: Window object not found"),
+        };
+        let storage: Storage = match window.local_storage() {
+            Ok(option) => match option {
+                Some(storage) => storage,
+                None => log_error("battleship: Local Storage Object not found"),
+            },
+            Err(error) => log_error()
+            {
+                web_sys::console::error(&Array::from(&error));
+                panic!("{}", error.as_string().unwrap())
+            }
+        };
+        let mut player_id: String = String::new();
+        match storage.get_item("player_id") {
+            Ok(value) => {
+                player_id = value.unwrap().to_string();
+            }
+            Err(_) => {
+                _ctx.link().send_future(async move {
+                    match get_request::<u32>("http://127.0.0.1:8000/get_player_id").await {
+                        Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
+                        Err(_) => Self::Message::NotReceived,
+                    }
+                });
+            }
+        }
         Self {
             number_of_players: 2,
             links: None,
             day: true,
-            player_id: 0,
+            player_id,
+            window,
+            storage,
         }
     }
 
@@ -96,6 +119,7 @@ impl Component for Menu {
             }
             Self::Message::ReceivedId(player_id) => {
                 self.player_id = player_id;
+                self.storage.set_item("player_id", &self.player_id).unwrap();
             }
             Self::Message::ReceivedLinks(links) => {
                 let mut links_index_array: IndexMap<AttrValue, (AttrValue, ApplyAttributeAs)> =
@@ -170,11 +194,11 @@ impl Component for Menu {
 
 async fn get_request<T: DeserializeOwned>(link: &str) -> Result<T, reqwest::Error> {
     Ok(reqwest::Client::new()
-       .get(link)
-       .send()
-       .await?
-       .json::<T>()
-       .await?)
+        .get(link)
+        .send()
+        .await?
+        .json::<T>()
+        .await?)
 }
 
 async fn send_player_amount_update<'a>(number_of_players: u8) -> Result<(), reqwest::Error> {
