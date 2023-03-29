@@ -3,22 +3,19 @@ use crate::ship::Ship;
 use rocket::serde::{Deserialize, Serialize};
 
 type BoardTop = Vec<Vec<Position>>;
-type ShipSet = Vec<Vec<Ship>>;
+type ShipSet = Vec<Ship>;
 
 #[derive(Serialize, Deserialize)]
 pub struct Board {
     board: BoardTop,
-    player_ships: ShipSet,
+    ships: ShipSet,
 }
 
 impl Board {
-    pub fn new(number_of_players: i8) -> Self {
+    pub fn new() -> Self {
         Self {
             board: Self::initialize_board(),
-            player_ships: (0..number_of_players).map(|_| {
-                Ship::new_ships()
-            })
-            .collect::<ShipSet>()
+            ships: Ship::new_ships(),
         }
     }
 

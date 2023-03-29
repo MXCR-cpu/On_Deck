@@ -139,6 +139,7 @@ struct Board {
     board: Vec<Vec<Position>>,
     player_a_ships: Vec<Ship>,
     player_b_ships: Vec<Ship>,
+    day: bool,
 }
 
 impl Board {
@@ -178,6 +179,7 @@ impl Component for Board {
             board: Board::initialize_board(),
             player_a_ships: Ship::new_ships(),
             player_b_ships: Ship::new_ships(),
+            day: true,
         }
     }
 
@@ -218,38 +220,51 @@ impl Component for Board {
             )
         };
         html! {
-            <div class={classes!("plain_style")}>
-                <div class={classes!("panel")}>
-                    <div class={classes!("board", "enemy_board")}>
-                        {
-                            indecies
-                            .clone()
-                            .into_iter()
-                            .map(|(index, jndex)| html! {
-                                if !self.board[index as usize][jndex as usize].player_a_fired {
-                                    <button class={map_button_class("untouched", index, jndex)} onclick={onclick(index, jndex)}></button>
-                                } else if !self.player_b_ships.iter().fold(false, |acc, ship| acc || ship.check_hit(index, jndex)){
-                                   <button class={map_button_class("miss", index, jndex)}></button>
-                                } else {
-                                  <button class={map_button_class("hit", index, jndex)}></button>
-                                }
-                            })
-                            .collect::<Html>()
-                        }
-                    </div>
-                    <div class={classes!("board", "home_board")}>
-                        {
-                            indecies
-                            .into_iter()
-                            .map(|(index, jndex)| html! {
-                                if self.player_a_ships.iter().fold(false, |acc, ship| acc || ship.check_hit(index, jndex)){
-                                    <button class={map_button_class("ship", index, jndex)}></button>
-                                } else {
-                                    <button class={map_button_class("untouched", index, jndex)}></button>
-                                }
-                            })
-                            .collect::<Html>()
-                        }
+            <div>
+                <style>{
+                    if self.day {
+                        "html {
+                            background-color: var(--normal_sky_color);
+                        }"
+                    } else {
+                        "html {
+                            background-color: var(--night_sky_color);
+                        }"
+                    }
+                }</style>
+                <div class={"ocean_setting"}>
+                    <div class={"battlefield"}>
+                        <div class={"board"}>
+                            {
+                                indecies
+                                .clone()
+                                .into_iter()
+                                .map(|(index, jndex)| html! {
+                                    if !self.board[index as usize][jndex as usize].player_a_fired {
+                                        <button class={map_button_class("untouched", index, jndex)} onclick={onclick(index, jndex)}></button>
+                                    } else if !self.player_b_ships.iter().fold(false, |acc, ship| acc || ship.check_hit(index, jndex)){
+                                       <button class={map_button_class("miss", index, jndex)}></button>
+                                    } else {
+                                      <button class={map_button_class("hit", index, jndex)}></button>
+                                    }
+                                })
+                                .collect::<Html>()
+                            }
+                        </div>
+                        <div class={"board"}>
+                            {
+                                indecies
+                                .into_iter()
+                                .map(|(index, jndex)| html! {
+                                    if self.player_a_ships.iter().fold(false, |acc, ship| acc || ship.check_hit(index, jndex)){
+                                        <button class={map_button_class("ship", index, jndex)}></button>
+                                    } else {
+                                        <button class={map_button_class("untouched", index, jndex)}></button>
+                                    }
+                                })
+                                .collect::<Html>()
+                            }
+                        </div>
                     </div>
                 </div>
             </div>

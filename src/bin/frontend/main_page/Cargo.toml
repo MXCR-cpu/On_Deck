@@ -4,11 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "link"
+path = "../../../link.rs"
 
 [dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 futures = "0.3.27"
 indexmap = "1.9.3"
 js-sys = "0.3.61"
+rand = "0.8.5"
 regex = "1.7.2"
 reqwest = { version = "0.11.15", features = ["json"] }
 serde = { version = "1.0.158", features = ["derive"] }
@@ -18,3 +23,4 @@ stylist = { version = "0.11.0", features = ["yew_integration"] }
 wasm-bindgen = "0.2.84"
 wasm-bindgen-futures = "0.4.34"
 yew = { version = "0.20.0", features = ["csr"] }
+state = "0.5.3"
