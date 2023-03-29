@@ -1,8 +1,9 @@
 // use link::Links;
 use indexmap::IndexMap;
 use serde::de::DeserializeOwned;
-use std::collections::HashMap;
 use web_sys::{Window, Storage};
+use js_sys::Array;
+use wasm_bindgen::JsValue;
 use yew::classes;
 use yew::prelude::*;
 use yew::{
@@ -10,12 +11,13 @@ use yew::{
     virtual_dom::{ApplyAttributeAs, Attributes},
     AttrValue,
 };
+use std::collections::HashMap;
+use crate::web_error::ErrorTrait;
 
-mod error;
+mod web_error;
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
-
 
 #[allow(dead_code)]
 pub struct Menu {
@@ -48,32 +50,32 @@ impl Component for Menu {
     fn create(_ctx: &Context<Self>) -> Self {
         let window: Window = match web_sys::window() {
             Some(window) => window,
-            None => log_error("battleship: Window object not found"),
+            None => "battleship: Window object not found".to_string().log_error(),
         };
         let storage: Storage = match window.local_storage() {
             Ok(option) => match option {
                 Some(storage) => storage,
-                None => log_error("battleship: Local Storage Object not found"),
+                None => "battleship: Local Storage Object not found".to_string().log_error(),
             },
-            Err(error) => log_error()
-            {
-                web_sys::console::error(&Array::from(&error));
-                panic!("{}", error.as_string().unwrap())
-            }
+            Err(error) => error.log_error(),
         };
         let mut player_id: String = String::new();
         match storage.get_item("player_id") {
-            Ok(value) => {
-                player_id = value.unwrap().to_string();
+            Ok(value) => match value {
+                Some(inner_player_id) => {
+                    player_id = inner_player_id.to_string();
+                }
+                None => {
+                    web_sys::console::log(&Array::from(&JsValue::from("battleship: player_id not found, retrieving new player_id...")));
+                    _ctx.link().send_future(async move {
+                        match get_request::<u32>("http://127.0.0.1:8000/get_player_id").await {
+                            Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
+                            Err(_) => Self::Message::NotReceived,
+                        }
+                    });
+                }
             }
-            Err(_) => {
-                _ctx.link().send_future(async move {
-                    match get_request::<u32>("http://127.0.0.1:8000/get_player_id").await {
-                        Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
-                        Err(_) => Self::Message::NotReceived,
-                    }
-                });
-            }
+            Err(error) => error.log_error(),
         }
         Self {
             number_of_players: 2,
@@ -118,10 +120,12 @@ impl Component for Menu {
                 });
             }
             Self::Message::ReceivedId(player_id) => {
+                web_error::web_log(format!("battleship: new player_id: {}", player_id));
                 self.player_id = player_id;
                 self.storage.set_item("player_id", &self.player_id).unwrap();
             }
             Self::Message::ReceivedLinks(links) => {
+                web_error::web_log("battleship: received game links".to_string());
                 let mut links_index_array: IndexMap<AttrValue, (AttrValue, ApplyAttributeAs)> =
                     IndexMap::new();
                 let mut index: i8 = 0;
@@ -172,8 +176,8 @@ impl Component for Menu {
                     <h2 class={"font_header"} style={"font-size: 36px;"}>{ format!("{} Player Free-for-all Battleship", self.number_of_players) }</h2>
                     <div class={classes!("menu_screen", "font")}>
                         <button class={classes!("menu_button", "button_col_0")} onclick={onclick(Self::Message::AddPlayer)}>{ "Add Player" }</button>
-                        <button class={classes!("menu_button", "button_col_2")} onclick={onclick(Self::Message::Send(self.number_of_players.clone()))}>{ "Start Game" }</button>
-                        <button class={classes!("menu_button", "button_col_1")} onclick={onclick(Self::Message::SubtractPlayer)}>{ "Subtract Player" }</button>
+                        <button class={classes!("menu_button", "button_col_1")} onclick={onclick(Self::Message::Send(self.number_of_players.clone()))}>{ "Start Game" }</button>
+                        <button class={classes!("menu_button", "button_col_2")} onclick={onclick(Self::Message::SubtractPlayer)}>{ "Subtract Player" }</button>
                     </div>
                     <div class={"links_base"}>
                         <ul>{
