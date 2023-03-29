@@ -4,14 +4,19 @@
 	--button_height: 100px;
 	--button_width: 200px;
 	--button_offset: 20%;
+	--board_width: 400px;
+	--board_height: 400px;
+	--battlefield_padding: 10px;
 	--sky_color: #00B5E2;
+	--normal_sky_color: #00B5E2;
+	--night_sky_color: #13294B;
+	/* --ocean_color: darkblue; */
+	--ocean_color: #0065C4;
+	--normal_ocean_color: #0065C4;
+	--night_ocean_color: #08101c;
 	--standard_radius: 20px;
 	--standard_padding: 10px;
 	--gap: 50px;
-}
-
-html {
-	background-color: var(--sky_color);
 }
 
 .font_header {
@@ -29,7 +34,7 @@ html {
 	color: white;
 }
 
-.sky_base {
+.panel_base {
 	position: fixed;
 	left: 50%;
 	top: 50%;
@@ -60,33 +65,56 @@ html {
 	background-color: lightblue;
 }
 
+.change_day_state_button {
+	width: calc(var(--button_width) / 3);
+	padding: calc(var(--standard_radius) / 2);
+	border-radius: var(--standard_radius) !important;
+	position: absolute;
+	top: 5%;
+	right: 0%;
+	transform: translate(-10%, -50%);
+	background-color: rgba(0,0,0,0.25);
+	color: white;
+}
+
+.change_day_state_button:hover {
+	background-color: lightblue;
+}
+
 /* board_page */
-.panel {
-	top: 25%;
-	height: 100vh;
+.ocean_setting {
+	position: absolute;
 	width: 100%;
-	padding: 10px;
-	display: grid;
-	grid-template-columns: auto auto;
-	gap: 0px;
+	height: 85%;
+	left: 0%;
+	bottom: 0%;
+	transform: translate(0%, 0%);
+	overflow: hidden;
+}
+
+.battlefield {
+	position: absolule;
+	top: 50%;
+	left: 50%;
+	height: 100%;
+	width: auto;
+	padding: var(--battlefield_padding);
+	background-color: var(--ocean_color);
+	/* display: grid; */
+	/* grid-template-columns: repeat(auto-fill, var(--board_width)); */
+	/* grid-gap: auto; */
+	display: flex;
+	flex-wrap: wrap;
 }
 
 .board {
-	height: 75%;
+	position: relative;
+	height: var(--board_height);
+	width: calc(50% - (2 * var(--battlefield_padding)));
 	padding: 10px;
 	display: grid;
 	grid-template-columns: auto auto auto auto auto auto auto auto auto auto;
-	gap: 0px;
-}
-
-.enemy_board {
-	grid-column-start: 1;
-	grid-column-end: 2;
-}
-
-.home_board {
-	grid-column-start: 2;
-	grid-column-end: 3;
+	grid-gap: 1px;
 }
 
 .main_button {
@@ -102,11 +130,11 @@ html {
 }
 
 .main_button_untouched {
-	background-color: darkblue;
+	background-color: rgba(0,0,0,0.25);
 }
 
 .main_button_untouched:hover {
-  background-color: lightblue;
+  background-color: rgba(256,256,256,0.25);
   opacity: 1;
 }
 
@@ -115,7 +143,7 @@ html {
 }
 
 .main_button_miss {
-  background-color: blue;
+  background-color: rgba(0,0,0,0);
 }
 
 .main_button_hit {
