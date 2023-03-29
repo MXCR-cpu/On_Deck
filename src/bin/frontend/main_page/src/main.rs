@@ -1,9 +1,9 @@
 // use link::Links;
+use crate::web_error::ErrorTrait;
 use indexmap::IndexMap;
-use serde::de::DeserializeOwned;
-use web_sys::{Window, Storage};
 use js_sys::Array;
 use wasm_bindgen::JsValue;
+use web_sys::{Storage, Window};
 use yew::classes;
 use yew::prelude::*;
 use yew::{
@@ -11,10 +11,9 @@ use yew::{
     virtual_dom::{ApplyAttributeAs, Attributes},
     AttrValue,
 };
-use std::collections::HashMap;
-use crate::web_error::ErrorTrait;
 
 mod web_error;
+mod request;
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
@@ -34,6 +33,7 @@ pub enum MenuMsg {
     ChangeDayState,
     AddPlayer,
     SubtractPlayer,
+    GoTo(String),
     Send(u8),
     Sent,
     NotSending,
@@ -50,12 +50,16 @@ impl Component for Menu {
     fn create(_ctx: &Context<Self>) -> Self {
         let window: Window = match web_sys::window() {
             Some(window) => window,
-            None => "battleship: Window object not found".to_string().log_error(),
+            None => "battleship: Window object not found"
+                .to_string()
+                .log_error(),
         };
         let storage: Storage = match window.local_storage() {
             Ok(option) => match option {
                 Some(storage) => storage,
-                None => "battleship: Local Storage Object not found".to_string().log_error(),
+                None => "battleship: Local Storage Object not found"
+                    .to_string()
+                    .log_error(),
             },
             Err(error) => error.log_error(),
         };
@@ -66,15 +70,17 @@ impl Component for Menu {
                     player_id = inner_player_id.to_string();
                 }
                 None => {
-                    web_sys::console::log(&Array::from(&JsValue::from("battleship: player_id not found, retrieving new player_id...")));
+                    web_sys::console::log(&Array::from(&JsValue::from(
+                        "battleship: player_id not found, retrieving new player_id...",
+                    )));
                     _ctx.link().send_future(async move {
-                        match get_request::<u32>("http://127.0.0.1:8000/get_player_id").await {
+                        match request::get_request::<u32>("http://127.0.0.1:8000/get_player_id").await {
                             Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
                             Err(_) => Self::Message::NotReceived,
                         }
                     });
                 }
-            }
+            },
             Err(error) => error.log_error(),
         }
         Self {
@@ -102,9 +108,12 @@ impl Component for Menu {
                     self.number_of_players = self.number_of_players - 1;
                 }
             }
+            Self::Message::GoTo(hyperlink) => {
+                self.window.location().set_href(hyperlink.as_str()).unwrap();
+            }
             Self::Message::Send(number_of_players) => {
                 _ctx.link().send_future(async move {
-                    match send_player_amount_update(number_of_players).await {
+                    match request::send_player_amount_update(number_of_players).await {
                         Ok(()) => Self::Message::Sent,
                         Err(_) => Self::Message::NotSending,
                     }
@@ -113,7 +122,7 @@ impl Component for Menu {
             }
             Self::Message::Sent => {
                 _ctx.link().send_future(async move {
-                    match get_request::<Vec<String>>("http://127.0.0.1:8000/game_links").await {
+                    match request::get_request::<Vec<String>>("http://127.0.0.1:8000/game_links").await {
                         Ok(links) => Self::Message::ReceivedLinks(links),
                         Err(_) => Self::Message::NotReceived,
                     }
@@ -165,13 +174,14 @@ impl Component for Menu {
                         }"
                     }
                 }</style>
-                <button class={"change_day_state_button"} onclick={onclick(Self::Message::ChangeDayState)}>{
-                    if self.day {
-                        "☀️"
-                    } else {
-                        "🌙"
-                    }
-                }</button>
+                <div class={"top_row"}>
+                    <button class={classes!("button_col_0")} onclick={onclick(Self::Message::GoTo("https://github.com/MXCR-cpu/Battleship".to_string()))}>
+                        { "🐙" }
+                    </button>
+                    <button class={classes!("button_col_1")} onclick={onclick(Self::Message::ChangeDayState)}>{
+                        if self.day { "☀️" } else { "🌙" }
+                    }</button>
+                </div>
                 <div class={"panel_base"}>
                     <h2 class={"font_header"} style={"font-size: 36px;"}>{ format!("{} Player Free-for-all Battleship", self.number_of_players) }</h2>
                     <div class={classes!("menu_screen", "font")}>
@@ -194,27 +204,6 @@ impl Component for Menu {
             </div>
         }
     }
-}
-
-async fn get_request<T: DeserializeOwned>(link: &str) -> Result<T, reqwest::Error> {
-    Ok(reqwest::Client::new()
-        .get(link)
-        .send()
-        .await?
-        .json::<T>()
-        .await?)
-}
-
-async fn send_player_amount_update<'a>(number_of_players: u8) -> Result<(), reqwest::Error> {
-    let mut map = HashMap::new();
-    map.insert("number_of_players".to_string(), number_of_players.clone());
-    let mut _result: HashMap<String, Vec<String>> = HashMap::new();
-    reqwest::Client::new()
-        .post("http://127.0.0.1:8000/start")
-        .json::<HashMap<String, u8>>(&map)
-        .send()
-        .await?;
-    Ok(())
 }
 
 fn main() {
