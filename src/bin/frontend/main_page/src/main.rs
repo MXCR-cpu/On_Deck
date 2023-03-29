@@ -17,15 +17,24 @@ mod request;
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
+const DONATION_MESSAGE: &str = "Although I am not accepting donations right now, just know that I respect and appreciate your consideration.\n\n\n - MXCR_cpu -";
+const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
+const INFORMATION: &str = "Personal Website as well as explanation of tech stack will be made available in the future";
 
 #[allow(dead_code)]
 pub struct Menu {
     number_of_players: u8,
     links: Option<Attributes>,
     day: bool,
+    settings: bool,
     player_id: String,
     window: Window,
     storage: Storage,
+}
+
+pub enum Pages {
+    Main,
+    Settings,
 }
 
 #[derive(Clone)]
@@ -33,7 +42,9 @@ pub enum MenuMsg {
     ChangeDayState,
     AddPlayer,
     SubtractPlayer,
+    Settings,
     GoTo(String),
+    Alert(String),
     Send(u8),
     Sent,
     NotSending,
@@ -87,6 +98,7 @@ impl Component for Menu {
             number_of_players: 2,
             links: None,
             day: true,
+            settings: false,
             player_id,
             window,
             storage,
@@ -108,8 +120,14 @@ impl Component for Menu {
                     self.number_of_players = self.number_of_players - 1;
                 }
             }
+            Self::Message::Settings => {
+                self.settings = !self.settings;
+            }
             Self::Message::GoTo(hyperlink) => {
                 self.window.location().set_href(hyperlink.as_str()).unwrap();
+            }
+            Self::Message::Alert(message) => {
+                self.window.alert_with_message(message.as_str()).unwrap();
             }
             Self::Message::Send(number_of_players) => {
                 _ctx.link().send_future(async move {
@@ -152,7 +170,7 @@ impl Component for Menu {
                 }
                 self.links = Some(Attributes::IndexMap(links_index_array));
             }
-            _ => {}
+            _ => {},
         }
         true
     }
@@ -175,33 +193,64 @@ impl Component for Menu {
                     }
                 }</style>
                 <div class={"top_row"}>
-                    <button class={classes!("button_col_0")} onclick={onclick(Self::Message::GoTo("https://github.com/MXCR-cpu/Battleship".to_string()))}>
+                    <button class={"button_col_0"} onclick={onclick(Self::Message::Alert(DONATION_MESSAGE.to_string()))} alt={"Donations"}>
+                        { "💸" }
+                    </button>
+                    <button class={"button_col_1"} onclick={onclick(Self::Message::GoTo(GITHUB_LINK.to_string()))}>
                         { "🐙" }
                     </button>
-                    <button class={classes!("button_col_1")} onclick={onclick(Self::Message::ChangeDayState)}>{
+                    <button class={"button_col_3"} onclick={onclick(Self::Message::Alert(INFORMATION.to_string()))}>
+                        { "🧠" }
+                    </button>
+                    <button class={"button_col_4"} onclick={onclick(Self::Message::ChangeDayState)}>{
                         if self.day { "☀️" } else { "🌙" }
                     }</button>
+                    <button class={"button_col_5"} onclick={onclick(Self::Message::Settings)}>{
+                        if self.settings { "🚀" } else { "⚙️" }
+                    }</button>
                 </div>
-                <div class={"panel_base"}>
-                    <h2 class={"font_header"} style={"font-size: 36px;"}>{ format!("{} Player Free-for-all Battleship", self.number_of_players) }</h2>
-                    <div class={classes!("menu_screen", "font")}>
-                        <button class={classes!("menu_button", "button_col_0")} onclick={onclick(Self::Message::AddPlayer)}>{ "Add Player" }</button>
-                        <button class={classes!("menu_button", "button_col_1")} onclick={onclick(Self::Message::Send(self.number_of_players.clone()))}>{ "Start Game" }</button>
-                        <button class={classes!("menu_button", "button_col_2")} onclick={onclick(Self::Message::SubtractPlayer)}>{ "Subtract Player" }</button>
-                    </div>
-                    <div class={"links_base"}>
-                        <ul>{
-                            match &self.links {
-                                Some(item) => item
-                                    .iter()
-                                    .map(|(_key, value): (&str, &str)| html!{ <p class={"font"}><a href={format!("{}/{}", value, self.player_id)}>{ "Game" }</a></p> })
-                                    .collect::<Html>(),
-                                None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
-                            }
-                        }</ul>
-                    </div>
-                </div>
+                <div class={"panel_base"}>{
+                    self.render_page(_ctx, if self.settings { Pages::Settings } else { Pages::Main })
+                }</div>
             </div>
+        }
+    }
+}
+
+impl Menu {
+    fn render_page(&self, _ctx: &Context<Self>, page_type: Pages) -> Html {
+        let onclick = |message: MenuMsg| _ctx.link().callback(move |_| message.clone());
+        match page_type {
+            Pages::Main => {
+                html! {
+                    <div>
+                        <h2 class={"font_header"} style={"font-size: 36px;"}>{ format!("{} Player Free-for-all Battleship", self.number_of_players) }</h2>
+                        <div class={classes!("menu_screen", "font")}>
+                            <button class={classes!("menu_button", "button_col_0")} onclick={onclick(MenuMsg::AddPlayer)}>{ "Add Player" }</button>
+                            <button class={classes!("menu_button", "button_col_1")} onclick={onclick(MenuMsg::Send(self.number_of_players.clone()))}>{ "Start Game" }</button>
+                            <button class={classes!("menu_button", "button_col_2")} onclick={onclick(MenuMsg::SubtractPlayer)}>{ "Subtract Player" }</button>
+                        </div>
+                        <div class={"links_base"}>
+                            <ul>{
+                                match &self.links {
+                                    Some(item) => item
+                                        .iter()
+                                        .map(|(_key, value): (&str, &str)| html!{ <p class={"font"}><a href={format!("{}/{}", value, self.player_id)}>{ "Game" }</a></p> })
+                                        .collect::<Html>(),
+                                    None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
+                                }
+                            }</ul>
+                        </div>
+                    </div>
+                }
+            }
+            Pages::Settings => {
+                html!{
+                    <div>
+                        <h2 class={"font_header"} style={"font-size: 36px;"}>{ "Settings" }</h2>
+                    </div>
+                }
+            }
         }
     }
 }
