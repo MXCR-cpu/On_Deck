@@ -2,9 +2,11 @@
 #[macro_use]
 extern crate rocket;
 
-use crate::database::RedisDatabase;
-use battleship::game::Game;
+use crate::database::{
+    database_get, database_set, json_database_get, json_database_set, RedisDatabase,
+};
 use battleship::board::Board;
+use battleship::game::Game;
 use battleship::position::FirePosition;
 use battleship::start;
 
@@ -63,40 +65,44 @@ async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<u32> {
     Json(_res)
 }
 
-//To-Do: Add a way to increment a game-count counter and save that to a list of saved games
-//all the while utilizing it as keyword for indexing the game
 #[post("/start", format = "json", data = "<players_obj>")]
 async fn start_game(mut rds: Connection<RedisDatabase>, players_obj: Json<HashMap<String, u8>>) {
-    // This needs to be simplified
     let players_number: u8 = players_obj.into_inner()["number_of_players"];
-    // println!("{{\"number_of_players\": {}}}", players_number);
-    let new_game: Game = Game::new(players_number);
-    redis::cmd("JSON.SET")
-        .arg(&[
-            "game",
-            ".",
-            serde_json::to_string(&new_game)
-                .unwrap()
-                .as_str(),
-        ])
-        .query_async::<_, ()>(&mut *rds)
+    let mut game_count: u64 = database_get::<&str>("game_count", &mut rds)
+        .await
+        .unwrap_or("0".to_string())
+        .parse::<u64>()
+        .unwrap();
+    game_count += 1;
+    let new_game: Game = Game::new(players_number, game_count);
+    database_set::<&[&str]>(&["game_count", game_count.to_string().as_str()], &mut rds)
+        .await
+        .unwrap();
+    json_database_set::<Game>(
+        &[format!("game_{}", game_count).as_str(), "."],
+        &new_game,
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    let mut current_games: Vec<String> =
+        json_database_get::<&[&str], Vec<String>>(&["current_games", "."], &mut rds)
+            .await
+            .unwrap_or(Vec::new());
+    current_games.push(game_count.to_string());
+    json_database_set::<Vec<String>>(&["current_games", "."], &current_games, &mut rds)
         .await
         .unwrap();
 }
 
-//To-Do: Find a away to iterate over all possible games' links and ship them to
-//the client so that way they can be displayed
 #[get("/game_links")]
 async fn get_game_links(mut rds: Connection<RedisDatabase>) -> Json<Vec<String>> {
-    let redis_query: String = redis::cmd("JSON.GET")
-        .arg(&["game", "$.game_link"])
-        .query_async(&mut *rds)
-        .await
-        .unwrap();
-    let active_links_new: String =
-        serde_json::from_str::<Vec<String>>(redis_query.as_str()).unwrap()[0].clone();
-    println!("{}", active_links_new);
-    Json(vec![active_links_new])
+    let active_games: Vec<String> =
+        json_database_get::<&[&str], Vec<String>>(&["current_games", "."], &mut rds)
+            .await
+            .unwrap_or(Vec::new());
+    println!("{:?}", active_games);
+    Json(active_games)
 }
 
 // Game Page Functions
@@ -111,14 +117,19 @@ async fn process_game_request(
 }
 
 #[get("/<_game_id>")]
-async fn get_game_state(mut rds: Connection<RedisDatabase>, _game_id: u32) -> Json<Vec<Board>> {
-    let _res: String = redis::cmd("JSON.GET")
-        .arg(&["game", "$.boards"])
-        .query_async(&mut *rds)
-        .await
-        .unwrap();
-    let _vec_res: Vec<Board> = serde_json::from_str(_res.as_str()).unwrap();
-    Json(_vec_res)
+async fn get_game_state(
+    mut rds: Connection<RedisDatabase>,
+    _game_id: u32,
+) -> Option<Json<Vec<Board>>> {
+    match json_database_get::<&[&str], Vec<Board>>(
+        &[format!("game_{}", _game_id).as_str(), "$.boards"],
+        &mut rds,
+    )
+    .await
+    {
+        Some(vec_res) => Some(Json(vec_res)),
+        None => None,
+    }
 }
 
 // Board Page Functions
@@ -165,12 +176,7 @@ fn rocket() -> _ {
         .attach(RedisDatabase::init())
         .mount(
             "/",
-            routes![
-                intercept_start,
-                start_game,
-                get_player_id,
-                get_game_links,
-            ],
+            routes![intercept_start, start_game, get_player_id, get_game_links,],
         )
         .mount("/main", routes![main_page, main_files])
         .mount("/game", routes![process_game_request, get_game_state])
