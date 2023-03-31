@@ -22,24 +22,8 @@
 	--panel_spacing: 30px;
 }
 
-.font_header {
-	font-family: "Helvetica", sans-serif;
-	color: white;
-	padding-bottom: var(--panel_spacing);
-	margin: 0px;
-}
-
-.links_base {
-	padding: 5px;
-	border-radius: var(--standard_radius);
-	background-color: var(--button_color_dormant);
-}
-
 .font {
 	font-family: "Helvetica", sans-serif;
-	color: white;
-	margin: 0px;
-	padding-bottom: calc(var(--panel_spacing) / 3);
 }
 
 /* main_page */
@@ -81,6 +65,14 @@
 	transition: background-color 5s ease;
 }
 
+.panel_header {
+	font-size: 32pt;
+	font-family: "Helvetica", sans-serif;
+	color: white;
+	padding-bottom: var(--panel_spacing);
+	margin: 0px;
+}
+
 .menu_screen {
 	display: grid;
 	height: var(--button_height);
@@ -94,6 +86,7 @@
 .menu_screen > button {
 	height: auto;
 	width: auto;
+	font-size: 16pt;
 	color: white;
 	border-color: transparent !important;
 	background-color: var(--button_color_dormant);
@@ -102,6 +95,23 @@
 
 .menu_button:hover {
 	background-color: var(--button_color_hovered);
+}
+
+.links_base {
+	padding: 5px;
+	border-radius: var(--standard_radius);
+	background-color: var(--button_color_dormant);
+}
+
+.links_holder {
+	list-style-type: circle;
+	color: white;
+}
+
+.links > :link {
+	font-size: 12pt;
+	color: white !important;
+	/* text-decoration: none !important; */
 }
 
 /* board_page */
