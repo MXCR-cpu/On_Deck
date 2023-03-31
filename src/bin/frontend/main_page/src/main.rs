@@ -32,15 +32,18 @@ const JAVASCRIPT_EVENTSOURCE_BODY: &str =
     //     return;
     // }
     const stream = JSON.parse(stream_links.data);
-    console.log(stream);
+    // console.log(stream);
     document.getElementsByTagName('ul')[0].replaceChildren();
 
     for(var i = 0; i < stream.length; i++) {
+        let active_player_count = stream[i]['active_player_names'].length;
+        let none_placeholder_names = '';
+        for(j = 0; j < (stream[i]['total_positions'] - active_player_count); j++) {
+            none_placeholder_names += 'None, ';
+        }
         document.getElementsByTagName('ul')[0].innerHTML +=
             `<li class=\"links font\">
-                <a href=\"http://127.0.0.1:8000/game/${stream[i]}/${window.localStorage['player_id']}\">
-                    Game ${stream[i]}
-                </a>
+                <a href=\"http://127.0.0.1:8000/game/${stream[i]['game_record_number']}/${window.localStorage['player_id']}\">Game ${stream[i]['game_record_number']}</a>   ${active_player_count}/${stream[i]['total_positions']}   ${stream[i]['active_player_names'].join(', ')}${none_placeholder_names}
             </li>`;
     }
 ";

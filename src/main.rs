@@ -3,7 +3,12 @@
 extern crate rocket;
 
 use crate::database::{
-    database_get, database_set, json_database_get, json_database_set, RedisDatabase,
+    database_get,
+    database_set,
+    json_database_get,
+    json_database_set,
+    GameListEntry,
+    RedisDatabase,
 };
 use battleship::board::Board;
 use battleship::game::Game;
@@ -75,20 +80,23 @@ async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<u32> {
 
 #[post("/start", format = "json", data = "<players_obj>")]
 async fn start_game(mut rds: Connection<RedisDatabase>, players_obj: Json<HashMap<String, u8>>) {
+    //Updating EventStream call
     database_set::<&[&str]>(&["links_update", "true"], &mut rds)
         .await
         .unwrap();
-    let players_number: u8 = players_obj.into_inner()["number_of_players"];
+    //Updating Game Count Record
+    let number_of_players: u8 = players_obj.into_inner()["number_of_players"];
     let mut game_count: u64 = database_get::<&str>("game_count", &mut rds)
         .await
         .unwrap_or("0".to_string())
         .parse::<u64>()
         .unwrap();
     game_count += 1;
-    let new_game: Game = Game::new(players_number, game_count);
+    let new_game: Game = Game::new(number_of_players, game_count);
     database_set::<&[&str]>(&["game_count", game_count.to_string().as_str()], &mut rds)
         .await
         .unwrap();
+    //Actually Setting Up the Game
     json_database_set::<Game>(
         &[format!("game_{}", game_count).as_str(), "."],
         &new_game,
@@ -96,12 +104,13 @@ async fn start_game(mut rds: Connection<RedisDatabase>, players_obj: Json<HashMa
     )
     .await
     .unwrap();
-    let mut current_games: Vec<String> =
-        json_database_get::<&[&str], Vec<String>>(&["current_games", "."], &mut rds)
+    //Updating the current game list key
+    let mut current_games: Vec<GameListEntry> =
+        json_database_get::<&[&str], Vec<GameListEntry>>(&["current_games", "."], &mut rds)
             .await
             .unwrap_or(Vec::new());
-    current_games.push(game_count.to_string());
-    json_database_set::<Vec<String>>(&["current_games", "."], &current_games, &mut rds)
+    current_games.push(GameListEntry::new(game_count, number_of_players));
+    json_database_set::<Vec<GameListEntry>>(&["current_games", "."], &current_games, &mut rds)
         .await
         .unwrap();
 }
@@ -128,8 +137,9 @@ async fn get_game_stream(
                             database_set::<&[&str]>(&["links_update", "false"], &mut _rds)
                                 .await
                                 .unwrap();
+                            //Maybe this is redundant? Parsing from json to convert it into json
                             yield Event::json(
-                                &json_database_get::<&[&str], Vec<String>>(
+                                &json_database_get::<&[&str], Vec<GameListEntry>>(
                                     &["current_games", "."],
                                     &mut _rds)
                                               .await

@@ -1,5 +1,5 @@
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use rocket_db_pools::{
     deadpool_redis::{
         Pool,
@@ -56,3 +56,36 @@ pub async fn json_database_set<T: Serialize>(arg: &[&str], item: &T, rds: &mut C
     Ok(())
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct GameListEntry {
+    game_record_number: u64,
+    total_positions: u8,
+    active_player_names: Vec<String>,
+}
+
+impl GameListEntry {
+    pub fn new(game_record_number: u64, total_positions: u8) -> Self {
+        Self {
+            game_record_number,
+            total_positions,
+            active_player_names: Vec::new(),
+        }
+    }
+
+    pub fn add_player(&self, player_name: String) -> Result<Self, &str> {
+        if self.is_full() {
+            return Err("Game is already full");
+        }
+        let mut player_list: Vec<String> = self.active_player_names.clone();
+        player_list.push(player_name);
+        Ok(Self {
+            game_record_number: self.game_record_number,
+            total_positions: self.total_positions,
+            active_player_names: player_list,
+        })
+    }
+
+    fn is_full(&self) -> bool {
+        self.active_player_names.len() as u8 == self.total_positions
+    }
+}
