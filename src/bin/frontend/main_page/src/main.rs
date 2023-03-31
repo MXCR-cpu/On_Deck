@@ -1,8 +1,11 @@
 // use link::Links;
+// use crate::request::get_request;
 use crate::web_error::ErrorTrait;
 use indexmap::IndexMap;
 use js_sys::Array;
+use js_sys::Function;
 use wasm_bindgen::JsValue;
+use web_sys::EventSource;
 use web_sys::{Storage, Window};
 use yew::classes;
 use yew::prelude::*;
@@ -12,14 +15,35 @@ use yew::{
     AttrValue,
 };
 
-mod web_error;
 mod request;
+mod web_error;
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
+const SITE_LINK: &str = "http://127.0.0.1:8000";
 const DONATION_MESSAGE: &str = "Although I am not accepting donations right now, just know that I respect and appreciate your consideration.\n\n\n - MXCR_cpu -";
 const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
-const INFORMATION: &str = "Personal Website as well as explanation of tech stack will be made available in the future";
+const INFORMATION: &str =
+    "Personal Website as well as explanation of tech stack will be made available in the future";
+//stream_links is the argument
+const JAVASCRIPT_EVENTSOURCE_BODY: &str =
+"
+    // if stream_links.data[0] == 'S' {
+    //     return;
+    // }
+    const stream = JSON.parse(stream_links.data);
+    console.log(stream);
+    document.getElementsByTagName('ul')[0].replaceChildren();
+
+    for(var i = 0; i < stream.length; i++) {
+        document.getElementsByTagName('ul')[0].innerHTML +=
+            `<li class=\"links font\">
+                <a href=\"http://127.0.0.1:8000/game/${stream[i]}/${window.localStorage['player_id']}\">
+                    Game ${stream[i]}
+                </a>
+            </li>`;
+    }
+";
 
 #[allow(dead_code)]
 pub struct Menu {
@@ -85,7 +109,11 @@ impl Component for Menu {
                         "battleship: player_id not found, retrieving new player_id...",
                     )));
                     _ctx.link().send_future(async move {
-                        match request::get_request::<u32>("http://127.0.0.1:8000/get_player_id").await {
+                        match request::get_request::<u32>(
+                            format!("{}/get_player_id", SITE_LINK).as_str(),
+                        )
+                        .await
+                        {
                             Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
                             Err(_) => Self::Message::NotReceived,
                         }
@@ -94,6 +122,12 @@ impl Component for Menu {
             },
             Err(error) => error.log_error(),
         }
+        EventSource::new(format!("{}/stream", SITE_LINK).as_str())
+            .unwrap()
+            .set_onmessage(Some(&Function::new_with_args(
+                "stream_links",
+                JAVASCRIPT_EVENTSOURCE_BODY,
+            )));
         Self {
             number_of_players: 2,
             links: None,
@@ -136,11 +170,14 @@ impl Component for Menu {
                         Err(_) => Self::Message::NotSending,
                     }
                 });
-                _ctx.link().send_message(Self::Message::Sent);
             }
             Self::Message::Sent => {
                 _ctx.link().send_future(async move {
-                    match request::get_request::<Vec<String>>("http://127.0.0.1:8000/game_links").await {
+                    match request::get_request::<Vec<String>>(
+                        format!("{}/stream", SITE_LINK).as_str(),
+                    )
+                    .await
+                    {
                         Ok(links) => Self::Message::ReceivedLinks(links),
                         Err(_) => Self::Message::NotReceived,
                     }
@@ -170,7 +207,7 @@ impl Component for Menu {
                 }
                 self.links = Some(Attributes::IndexMap(links_index_array));
             }
-            _ => {},
+            _ => {}
         }
         true
     }
@@ -224,30 +261,38 @@ impl Menu {
             Pages::Main => {
                 html! {
                     <div>
-                        <h2 class={"font_header"} style={"font-size: 36px;"}>{ format!("{} Player Free-for-all Battleship", self.number_of_players) }</h2>
+                        <h2 class={classes!("panel_header", "font")}>{ format!("{} Player Free-for-all Battleship", self.number_of_players) }</h2>
                         <div class={classes!("menu_screen", "font")}>
                             <button class={classes!("menu_button", "button_col_0")} onclick={onclick(MenuMsg::AddPlayer)}>{ "Add Player" }</button>
                             <button class={classes!("menu_button", "button_col_1")} onclick={onclick(MenuMsg::Send(self.number_of_players.clone()))}>{ "Start Game" }</button>
                             <button class={classes!("menu_button", "button_col_2")} onclick={onclick(MenuMsg::SubtractPlayer)}>{ "Subtract Player" }</button>
                         </div>
-                        <div class={"links_base"}>
-                            <ul>{
-                                match &self.links {
-                                    Some(item) => item
-                                        .iter()
-                                        .map(|(_key, value): (&str, &str)| html!{ <p class={"font"}><a href={format!("{}/{}", value, self.player_id)}>{ "Game" }</a></p> })
-                                        .collect::<Html>(),
-                                    None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
-                                }
-                            }</ul>
+                        <div class={classes!("links_base", "font")}>
+                            <ul class={"links_holder"}>
+                            // {
+                                // match &self.links {
+                                //     Some(item) => item
+                                //         .iter()
+                                //         .map(|(_key, value): (&str, &str)| html!{
+                                //             <li><a class={classes!("links", "font")}
+                                //                 href={format!("{}/game/{}/{}", SITE_LINK, value, self.player_id)}>
+                                //                 { format!("Game {}", value) }
+                                //                 </a>
+                                //             </li>
+                                //         })
+                                //         .collect::<Html>(),
+                                //     None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
+                                // }
+                            // }
+                            </ul>
                         </div>
                     </div>
                 }
             }
             Pages::Settings => {
-                html!{
+                html! {
                     <div>
-                        <h2 class={"font_header"} style={"font-size: 36px;"}>{ "Settings" }</h2>
+                        <h2 class={classes!("panel_header", "font")}>{ "Settings" }</h2>
                     </div>
                 }
             }

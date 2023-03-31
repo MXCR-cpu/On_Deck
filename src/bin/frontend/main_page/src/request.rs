@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::de::DeserializeOwned;
+use std::collections::HashMap;
 
 pub async fn get_request<T: DeserializeOwned>(link: &str) -> Result<T, reqwest::Error> {
     Ok(reqwest::Client::new()
@@ -21,4 +21,3 @@ pub async fn send_player_amount_update<'a>(number_of_players: u8) -> Result<(), 
         .await?;
     Ok(())
 }
-
