@@ -37,6 +37,7 @@
 	transform: translate(0%, -50%);
 	grid-template-columns: repeat(auto-fit, calc(var(--button_width) / 3));
 	grid-gap: calc(var(--button_width) / 12);
+	z-index: 3;
 }
 
 .top_row > button {
@@ -63,6 +64,7 @@
 	border-radius: var(--standard_radius);
 	padding: calc(var(--standard_radius) * 2);
 	transition: background-color 5s ease;
+	z-index: 2;
 }
 
 .panel_header {
@@ -113,6 +115,44 @@
 	font-size: 12pt;
 	color: white !important;
 	/* text-decoration: none !important; */
+}
+
+.background {
+	position: fixed;
+	height: 100%;
+	width: 100%;
+	left: 0%;
+	bottom: 0%;
+	/* transform: translate(-30%, 10%); */
+	overflow: hidden;
+	z-index: 1;
+}
+
+.sky {
+	position: fixed;
+	height: auto;
+	width: auto;
+}
+
+.ship_dark {
+	opacity: 0.5;
+	transition: background-color 0.5s ease;
+}
+
+.main_screen_ship {
+	position: fixed;
+	bottom: 0%;
+	/* animation: 3s infinite rocking alternate; */
+}
+
+@keyframes rocking {
+	from {
+		bottom: -5%;
+	}
+
+	to {
+		bottom: -2%;
+	}
 }
 
 /* board_page */

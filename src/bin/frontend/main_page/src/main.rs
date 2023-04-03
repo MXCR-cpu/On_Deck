@@ -17,6 +17,7 @@ use yew::{
 
 mod request;
 mod web_error;
+pub mod sky;
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
@@ -28,11 +29,10 @@ const INFORMATION: &str =
 //stream_links is the argument
 const JAVASCRIPT_EVENTSOURCE_BODY: &str =
 "
-    // if stream_links.data[0] == 'S' {
-    //     return;
-    // }
+    if (stream_links.data === 'Stream Kill Switch') {
+        return;
+    }
     const stream = JSON.parse(stream_links.data);
-    // console.log(stream);
     document.getElementsByTagName('ul')[0].replaceChildren();
 
     for(var i = 0; i < stream.length; i++) {
@@ -57,6 +57,7 @@ pub struct Menu {
     player_id: String,
     window: Window,
     storage: Storage,
+    event_source: EventSource,
 }
 
 pub enum Pages {
@@ -101,12 +102,23 @@ impl Component for Menu {
             },
             Err(error) => error.log_error(),
         };
-        let mut player_id: String = String::new();
-        match storage.get_item("player_id") {
+        let day: bool = match storage.get_item("day_setting") {
+            Ok(value) => match value
+                .unwrap_or_else(|| {
+                    storage.set_item("day_setting", "day").unwrap();
+                    "day".to_string()
+                })
+                .as_str()
+            {
+                "day" => true,
+                "night" => false,
+                _ => false,
+            },
+            Err(error) => error.log_error(),
+        };
+        let player_id: String = match storage.get_item("player_id") {
             Ok(value) => match value {
-                Some(inner_player_id) => {
-                    player_id = inner_player_id.to_string();
-                }
+                Some(inner_player_id) => inner_player_id.to_string(),
                 None => {
                     web_sys::console::log(&Array::from(&JsValue::from(
                         "battleship: player_id not found, retrieving new player_id...",
@@ -121,24 +133,26 @@ impl Component for Menu {
                             Err(_) => Self::Message::NotReceived,
                         }
                     });
+                    String::new()
                 }
             },
             Err(error) => error.log_error(),
-        }
-        EventSource::new(format!("{}/stream", SITE_LINK).as_str())
-            .unwrap()
-            .set_onmessage(Some(&Function::new_with_args(
-                "stream_links",
-                JAVASCRIPT_EVENTSOURCE_BODY,
-            )));
+        };
+        let event_source: EventSource =
+            EventSource::new(format!("{}/stream", SITE_LINK).as_str()).unwrap();
+        event_source.set_onmessage(Some(&Function::new_with_args(
+            "stream_links",
+            JAVASCRIPT_EVENTSOURCE_BODY,
+        )));
         Self {
             number_of_players: 2,
             links: None,
-            day: true,
+            day,
             settings: false,
             player_id,
             window,
             storage,
+            event_source,
         }
     }
 
@@ -146,6 +160,9 @@ impl Component for Menu {
         match _msg {
             Self::Message::ChangeDayState => {
                 self.day = !self.day;
+                self.storage
+                    .set_item("day_setting", if self.day { "true" } else { "night" })
+                    .unwrap();
             }
             Self::Message::AddPlayer => {
                 if self.number_of_players < MAX_PLAYERS {
@@ -220,18 +237,25 @@ impl Component for Menu {
         html! {
             <div>
                 <style>{
-                    if self.day {
-                        "html {
-                            background-color: var(--normal_sky_color);
+                    format!(
+                        "html {{
+                            background-color: var({});
                             transition: background-color 0.5s ease;
-                        }"
-                    } else {
-                        "html {
-                            background-color: var(--night_sky_color);
-                            transition: background-color 0.5s ease;
-                        }"
-                    }
+                        }}",
+                        if self.day {
+                            "--normal_sky_color"
+                        } else {
+                            "--night_sky_color"
+                        })
                 }</style>
+                <div class={"background"}>
+                    if !self.day {
+                        <sky::Sky max_stars={35} star_size={5} />
+                    }
+                    <div class={classes!("main_screen_ship", if !self.day { "ship_dark" } else { "" })}>
+                        <img src={format!("{}/extra_files/FacingShip.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
+                    </div>
+                </div>
                 <div class={"top_row"}>
                     <button class={"button_col_0"} onclick={onclick(Self::Message::Alert(DONATION_MESSAGE.to_string()))} alt={"Donations"}>
                         { "💸" }
@@ -255,6 +279,10 @@ impl Component for Menu {
             </div>
         }
     }
+
+    fn destroy(&mut self, _ctx: &Context<Self>) {
+        self.event_source.close();
+    }
 }
 
 impl Menu {
@@ -272,21 +300,6 @@ impl Menu {
                         </div>
                         <div class={classes!("links_base", "font")}>
                             <ul class={"links_holder"}>
-                            // {
-                                // match &self.links {
-                                //     Some(item) => item
-                                //         .iter()
-                                //         .map(|(_key, value): (&str, &str)| html!{
-                                //             <li><a class={classes!("links", "font")}
-                                //                 href={format!("{}/game/{}/{}", SITE_LINK, value, self.player_id)}>
-                                //                 { format!("Game {}", value) }
-                                //                 </a>
-                                //             </li>
-                                //         })
-                                //         .collect::<Html>(),
-                                //     None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
-                                // }
-                            // }
                             </ul>
                         </div>
                     </div>
@@ -302,6 +315,21 @@ impl Menu {
         }
     }
 }
+                            // {
+                                // match &self.links {
+                                //     Some(item) => item
+                                //         .iter()
+                                //         .map(|(_key, value): (&str, &str)| html!{
+                                //             <li><a class={classes!("links", "font")}
+                                //                 href={format!("{}/game/{}/{}", SITE_LINK, value, self.player_id)}>
+                                //                 { format!("Game {}", value) }
+                                //                 </a>
+                                //             </li>
+                                //         })
+                                //         .collect::<Html>(),
+                                //     None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
+                                // }
+                            // }
 
 fn main() {
     yew::Renderer::<Menu>::new().render();
