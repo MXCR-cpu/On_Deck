@@ -3,9 +3,9 @@
 use crate::web_error::ErrorTrait;
 use indexmap::IndexMap;
 use js_sys::Array;
-use js_sys::Function;
+// use js_sys::Function;
 use wasm_bindgen::JsValue;
-use web_sys::EventSource;
+// use web_sys::EventSource;
 use web_sys::{Storage, Window};
 use yew::classes;
 use yew::prelude::*;
@@ -27,26 +27,6 @@ const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
 const INFORMATION: &str =
     "Personal Website as well as explanation of tech stack will be made available in the future";
 //stream_links is the argument
-const JAVASCRIPT_EVENTSOURCE_BODY: &str =
-"
-    if (stream_links.data === 'Stream Kill Switch') {
-        return;
-    }
-    const stream = JSON.parse(stream_links.data);
-    document.getElementsByTagName('ul')[0].replaceChildren();
-
-    for(var i = 0; i < stream.length; i++) {
-        let active_player_count = stream[i]['active_player_names'].length;
-        let none_placeholder_names = '';
-        for(j = 0; j < (stream[i]['total_positions'] - active_player_count); j++) {
-            none_placeholder_names += 'None, ';
-        }
-        document.getElementsByTagName('ul')[0].innerHTML +=
-            `<li class=\"links font\">
-                <a href=\"http://127.0.0.1:8000/game/${stream[i]['game_record_number']}/${window.localStorage['player_id']}\">Game ${stream[i]['game_record_number']}</a>   ${active_player_count}/${stream[i]['total_positions']}   ${stream[i]['active_player_names'].join(', ')}${none_placeholder_names}
-            </li>`;
-    }
-";
 
 #[allow(dead_code)]
 pub struct Menu {
@@ -57,7 +37,6 @@ pub struct Menu {
     player_id: String,
     window: Window,
     storage: Storage,
-    event_source: EventSource,
 }
 
 pub enum Pages {
@@ -138,12 +117,6 @@ impl Component for Menu {
             },
             Err(error) => error.log_error(),
         };
-        let event_source: EventSource =
-            EventSource::new(format!("{}/stream", SITE_LINK).as_str()).unwrap();
-        event_source.set_onmessage(Some(&Function::new_with_args(
-            "stream_links",
-            JAVASCRIPT_EVENTSOURCE_BODY,
-        )));
         Self {
             number_of_players: 2,
             links: None,
@@ -152,7 +125,6 @@ impl Component for Menu {
             player_id,
             window,
             storage,
-            event_source,
         }
     }
 
@@ -235,26 +207,18 @@ impl Component for Menu {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         let onclick = |message: Self::Message| _ctx.link().callback(move |_| message.clone());
         html! {
-            <div>
-                <style>{
-                    format!(
-                        "html {{
-                            background-color: var({});
-                            transition: background-color 0.5s ease;
-                        }}",
-                        if self.day {
-                            "--normal_sky_color"
-                        } else {
-                            "--night_sky_color"
-                        })
-                }</style>
+            <div class={classes!("sky_whole", if self.day { "sky_day" } else { "sky_night" })}>
                 <div class={"background"}>
-                    if !self.day {
+                    if self.day {
+                        <div class={classes!("main_screen_ship")}>
+                            <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
+                        </div>
+                    } else {
                         <sky::Sky max_stars={35} star_size={5} />
+                        <div class={classes!("main_screen_ship", "ship_night")}>
+                            <img src={format!("{}/extra_files/Menu_Ship_Night.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
+                        </div>
                     }
-                    <div class={classes!("main_screen_ship", if !self.day { "ship_dark" } else { "" })}>
-                        <img src={format!("{}/extra_files/FacingShip.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
-                    </div>
                 </div>
                 <div class={"top_row"}>
                     <button class={"button_col_0"} onclick={onclick(Self::Message::Alert(DONATION_MESSAGE.to_string()))} alt={"Donations"}>
@@ -279,10 +243,6 @@ impl Component for Menu {
             </div>
         }
     }
-
-    fn destroy(&mut self, _ctx: &Context<Self>) {
-        self.event_source.close();
-    }
 }
 
 impl Menu {
@@ -300,6 +260,21 @@ impl Menu {
                         </div>
                         <div class={classes!("links_base", "font")}>
                             <ul class={"links_holder"}>
+                            {
+                                match &self.links {
+                                    Some(item) => item
+                                        .iter()
+                                        .map(|(_key, value): (&str, &str)| html!{
+                                            <li><a class={classes!("links", "font")}
+                                                href={format!("{}/game/{}/{}", SITE_LINK, value, self.player_id)}>
+                                                { format!("Game {}", value) }
+                                                </a>
+                                            </li>
+                                        })
+                                        .collect::<Html>(),
+                                    None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
+                                }
+                            }
                             </ul>
                         </div>
                     </div>
@@ -315,21 +290,6 @@ impl Menu {
         }
     }
 }
-                            // {
-                                // match &self.links {
-                                //     Some(item) => item
-                                //         .iter()
-                                //         .map(|(_key, value): (&str, &str)| html!{
-                                //             <li><a class={classes!("links", "font")}
-                                //                 href={format!("{}/game/{}/{}", SITE_LINK, value, self.player_id)}>
-                                //                 { format!("Game {}", value) }
-                                //                 </a>
-                                //             </li>
-                                //         })
-                                //         .collect::<Html>(),
-                                //     None => html!{ <p class={"font"}>{ "Select the number of players and start the game" }</p> }
-                                // }
-                            // }
 
 fn main() {
     yew::Renderer::<Menu>::new().render();

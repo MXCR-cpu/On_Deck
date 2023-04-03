@@ -123,35 +123,45 @@
 	width: 100%;
 	left: 0%;
 	bottom: 0%;
-	/* transform: translate(-30%, 10%); */
-	overflow: hidden;
 	z-index: 1;
 }
 
-.sky {
+.sky_whole {
 	position: fixed;
-	height: auto;
-	width: auto;
+	height: 100%;
+	width: 100%;
+	top: 0%;
+	left: 0%;
+	transition: background-color 3s ease;
+	overflow: hidden;
 }
 
-.ship_dark {
-	opacity: 0.5;
-	transition: background-color 0.5s ease;
+.sky_day {
+	background-color: var(--normal_sky_color);
+}
+
+.sky_night {
+	background-color: var(--night_sky_color);
+}
+
+.ship_night {
+	opacity: 0.97;
 }
 
 .main_screen_ship {
 	position: fixed;
 	bottom: 0%;
-	/* animation: 3s infinite rocking alternate; */
+	transition: opacity 3s ease;
+	animation: 3s infinite rocking alternate;
 }
 
 @keyframes rocking {
 	from {
-		bottom: -5%;
+		bottom: -13%;
 	}
 
 	to {
-		bottom: -2%;
+		bottom: -10%;
 	}
 }
 
