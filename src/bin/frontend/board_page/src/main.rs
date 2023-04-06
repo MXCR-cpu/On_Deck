@@ -1,217 +1,228 @@
+use frontend::board::Board;
+use frontend::position::FirePosition;
+use frontend::position::FiredState;
+use frontend::site::SITE_LINK;
+use regex::Regex;
+use std::time::Duration;
+use utils_files::request::fire_on_position;
+use utils_files::request::get_request;
+#[allow(unused_imports)]
+use utils_files::sky::Sky;
+use wasm_bindgen::JsValue;
+use web_sys::{Storage, Window};
 use yew::classes;
+use yew::platform::time::sleep;
 use yew::prelude::*;
 
-const SQUARE_SIDE: i8 = 10;
-
-#[derive(Clone)]
-pub struct Position {
-    latitude: i8,
-    longitude: i8,
-    player_a_fired: bool,
-    player_b_fired: bool,
-}
-
-impl Position {
-    pub fn new(lat: i8, lon: i8) -> Result<Self, String> {
-        if lat < 0 || SQUARE_SIDE - 1 < lat {
-            return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
-                "lat",
-                lat,
-                SQUARE_SIDE - 1
-            ));
-        }
-        if lon < 0 || SQUARE_SIDE - 1 < lon {
-            return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
-                "lon",
-                lon,
-                SQUARE_SIDE - 1
-            ));
-        }
-        Ok(Self {
-            latitude: lat,
-            longitude: lon,
-            player_a_fired: false,
-            player_b_fired: false,
-        })
-    }
-
-    pub fn update(lat: i8, lon: i8) -> Result<Self, String> {
-        if lat < 0 || SQUARE_SIDE - 1 < lat {
-            return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
-                "lat",
-                lat,
-                SQUARE_SIDE - 1
-            ));
-        }
-        if lon < 0 || SQUARE_SIDE - 1 < lon {
-            return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
-                "lon",
-                lon,
-                SQUARE_SIDE - 1
-            ));
-        }
-        Ok(Self {
-            latitude: lat,
-            longitude: lon,
-            player_a_fired: false,
-            player_b_fired: false,
-        })
-    }
-}
-
-#[derive(Clone)]
-struct Ship {
-    name: String,
-    location: Vec<Position>,
-}
-
-enum Direction {
-    North,
-    West,
-    South,
-    East,
-}
-
-impl Ship {
-    pub fn new(ship_name: String, pos: Result<Vec<Position>, String>) -> Self {
-        match pos {
-            Ok(p) => Self {
-                name: ship_name,
-                location: p,
-            },
-            Err(e) => panic!("{}: {}", ship_name, e),
-        }
-    }
-
-    pub fn new_ships() -> Vec<Self> {
-        [
-            ("Carrier".to_string(), 5),
-            ("Battleship".to_string(), 4),
-            ("Destroyer".to_string(), 3),
-            ("Submarine".to_string(), 3),
-            ("Patrol Boat".to_string(), 2),
-        ]
-        .into_iter()
-        .enumerate()
-        .map(|(index, (name, size))| {
-            Self::new(
-                name,
-                Self::direction((0, index as i8), size, Direction::East),
-            )
-        })
-        .collect::<Vec<Self>>() // make sure to include ship collision detection
-    }
-
-    fn direction(pos: (i8, i8), size: i8, direction: Direction) -> Result<Vec<Position>, String> {
-        Ok((0..size)
-            .map(|index| {
-                match Position::new(
-                    match direction {
-                        Direction::East => pos.0 + index,
-                        Direction::West => pos.0 - index,
-                        _ => pos.0,
-                    },
-                    match direction {
-                        Direction::South => pos.1 - index,
-                        Direction::North => pos.1 + index,
-                        _ => pos.1,
-                    },
-                ) {
-                    Ok(p) => p,
-                    Err(e) => panic!("{}", e),
-                }
-            })
-            .collect::<Vec<Position>>())
-    }
-
-    fn check_hit(&self, index: i8, jndex: i8) -> bool {
-        self.location.iter().fold(false, |acc, pos| {
-            acc || (pos.latitude == index && pos.longitude == jndex)
-        })
-    }
-}
-
-struct Board {
-    board: Vec<Vec<Position>>,
-    player_a_ships: Vec<Ship>,
-    player_b_ships: Vec<Ship>,
+struct ClientGame {
     day: bool,
+    boards: Board,
+    player_id: String,
+    game_number: u32,
 }
 
-impl Board {
-    pub fn initialize_board() -> Vec<Vec<Position>> {
-        (0..10)
-            .map(|index| {
-                (0..10)
-                    .map(|jndex| Position::new(index, jndex).unwrap())
-                    .collect::<Vec<Position>>()
-            })
-            .collect::<Vec<Vec<Position>>>()
-    }
-
-    pub fn fire(&self, lat: i8, lon: i8, player: i8) -> Vec<Vec<Position>> {
-        let mut new_board = self.board.clone();
-        new_board[lat as usize][lon as usize] = Position {
-            latitude: lat,
-            longitude: lon,
-            player_a_fired: player == 1 || self.board[lat as usize][lon as usize].player_a_fired,
-            player_b_fired: player == 2 || self.board[lat as usize][lon as usize].player_b_fired,
-        };
-        new_board
-    }
+enum ClientGameMsg {
+    Fire(usize, usize, usize),
+    Fired,
+    NotFired,
+    ReceivedId(String),
+    NotReceived,
+    UpdateBoardGame(Board),
+    Sent,
 }
 
-enum BoardMsg {
-    PlayerAFire(i8, i8),
-    PlayerBFire(i8, i8),
-}
-
-impl Component for Board {
-    type Message = BoardMsg;
+impl Component for ClientGame {
+    type Message = ClientGameMsg;
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
+        let window: Window = match web_sys::window() {
+            Some(window) => window,
+            None => {
+                web_sys::console::log_1(&JsValue::from(
+                    "board_page/src/main.rs: create(): Window object not found; ",
+                ));
+                panic!()
+            }
+        };
+        let storage: Storage = match window.local_storage() {
+            Ok(option) => match option {
+                Some(storage) => storage,
+                None => {
+                    web_sys::console::log_1(&JsValue::from(
+                        "board_page/src/main.rs: create(): Storage object not found; ",
+                    ));
+                    panic!()
+                }
+            },
+            Err(error) => {
+                web_sys::console::log_2(
+                    &JsValue::from("board_page/src/main.rs: create(): Storage object not found; \n\t"),
+                    &error,
+                );
+                panic!()
+            }
+        };
+        let player_id: String = match storage.get_item("player_id") {
+            Ok(value) => match value {
+                Some(inner_player_id) => inner_player_id.to_string(),
+                None => {
+                    web_sys::console::log_1(&JsValue::from(
+                        "board_page/src/main.rs: create(), 68: player_id item not found, retrieving new player_id...",
+                    ));
+                    _ctx.link().send_future(async move {
+                        match get_request::<u32>(format!("{}/get_player_id", SITE_LINK).as_str())
+                            .await
+                        {
+                            Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
+                            Err(_) => Self::Message::NotReceived,
+                        }
+                    });
+                    String::new()
+                }
+            },
+            Err(error) => {
+                web_sys::console::log_2(
+                    &JsValue::from("board_page/src/main.rs: create(): Storage object not found; \n\t"),
+                    &error,
+                );
+                panic!()
+            }
+        };
+        let day: bool = match storage.get_item("day_setting") {
+            Ok(value) => match value
+                .unwrap_or_else(|| {
+                    storage.set_item("day_setting", "day").unwrap();
+                    "day".to_string()
+                })
+                .as_str()
+            {
+                "day" => true,
+                "night" => false,
+                _ => false,
+            },
+            Err(error) => {
+                web_sys::console::log_2(
+                    &JsValue::from("board_page/src/main.rs: create(): Could not access storage; \n\t"),
+                    &error,
+                );
+                panic!()
+            }
+        };
+        let game_number: u32 = match Regex::new(r"\d+").unwrap().find(
+            Regex::new(r"game/\d+")
+                .unwrap()
+                .find(&window.location().href().unwrap())
+                .unwrap()
+                .as_str(),
+        ) {
+            Some(result) => match result.as_str().parse::<u32>() {
+                Ok(result) => result,
+                Err(error) => {
+                    web_sys::console::log_1(
+                        &format!("board_page/src/main.rs: create(): Could not parse &str into u32; \n\t{}", error).into()
+                    );
+                    panic!()
+                }
+            },
+            None => {
+                web_sys::console::log_1(
+                        &format!("board_page/src/main.rs: create(): Regex did not find any matching patterns for game_id within the url").into());
+                panic!()
+            }
+        };
+        _ctx.link().send_future(async move {
+            match get_request::<Board>(format!("{}/game/{}", SITE_LINK, game_number).as_str()).await
+            {
+                Ok(result) => Self::Message::UpdateBoardGame(result),
+                Err(error) => {
+                    web_sys::console::log_1(
+                        &JsValue::from(
+                            format!("board_page/src/main.rs: create(): Could not receive active game link update; \n\t{}", error))
+                    );
+                    Self::Message::NotReceived
+                }
+            }
+        });
         Self {
-            board: Board::initialize_board(),
-            player_a_ships: Ship::new_ships(),
-            player_b_ships: Ship::new_ships(),
-            day: true,
+            boards: Board::empty(),
+            day,
+            player_id,
+            game_number,
         }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        let game_number: u32 = self.game_number;
         match msg {
-            Self::Message::PlayerAFire(lat, lon) => {
-                self.board = self.fire(lat, lon, 1);
-                true
+            Self::Message::Fire(x_pos, y_pos, to) => _ctx.link().send_future(async move {
+                match fire_on_position::<FirePosition>(
+                    FirePosition::new(x_pos, y_pos, to),
+                    game_number,
+                )
+                .await
+                {
+                    Ok(_) => Self::Message::Fired,
+                    Err(error) => {
+                        web_sys::console::log_1(
+                            &format!(
+                                "board_page/src/main.rs: update(): Could send fire post request; \n\t{}",
+                                error
+                            ).into()
+                        );
+                        Self::Message::NotFired
+                    }
+                }
+            }),
+            Self::Message::ReceivedId(player_id) => {
+                self.player_id = player_id;
             }
-            Self::Message::PlayerBFire(lat, lon) => {
-                self.board = self.fire(lat, lon, 2);
-                true
+            Self::Message::UpdateBoardGame(game_state) => {
+                self.boards = game_state;
+                _ctx.link().send_message(Self::Message::Sent);
             }
+            Self::Message::Sent => {
+                _ctx.link().send_future(async move {
+                    sleep(Duration::from_secs(5)).await;
+                        match get_request::<Board>(
+                            format!("{}/game/{}", SITE_LINK, game_number).as_str(),
+                        )
+                        .await {
+                            Ok(result) => Self::Message::UpdateBoardGame(result),
+                            Err(error) => {
+                                web_sys::console::log_1(
+                                    &format!(
+                                        "board_page/src/main.rs: update(): Could not receive active game link update; \n\t{}",
+                                        error
+                                    ).into()
+                                );
+                                Self::Message::NotReceived
+                            }
+                        }
+                });
+            }
+            _ => {}
         }
+        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let indecies: Vec<(i8, i8)> = (0..10)
+        let indecies: Vec<(usize, usize)> = (0..10)
             .map(|index| {
                 (0..10)
                     .map(|jndex| (index, jndex))
-                    .collect::<Vec<(i8, i8)>>()
+                    .collect::<Vec<(usize, usize)>>()
             })
-            .collect::<Vec<Vec<(i8, i8)>>>()
+            .collect::<Vec<Vec<(usize, usize)>>>()
             .into_iter()
             .flatten()
-            .collect::<Vec<(i8, i8)>>();
-        let onclick = |index: i8, jndex: i8| {
+            .collect::<Vec<(usize, usize)>>();
+        let number_of_players: &usize = &self.boards.board[0][0].fired_state.len();
+        let onclick = |index: usize, jndex: usize, to: usize| {
             ctx.link()
-                .callback(move |_| Self::Message::PlayerAFire(index, jndex))
+                .callback(move |_| Self::Message::Fire(index, jndex, to))
         };
-        let map_button_class = |result, index: i8, jndex: i8| {
+        let map_button_class = |result: &str, index: usize, jndex: usize| {
             classes!(
                 "main_button",
                 format!("main_button_{}", result),
@@ -221,50 +232,38 @@ impl Component for Board {
         };
         html! {
             <div>
-                <style>{
-                    if self.day {
-                        "html {
-                            background-color: var(--normal_sky_color);
-                        }"
-                    } else {
-                        "html {
-                            background-color: var(--night_sky_color);
-                        }"
+                <div class={classes!("ocean_setting", if self.day { "sky_day" } else { "sky_night" })}>
+                    <div class={"battlefield"}>{
+                        (0..*number_of_players)
+                            .into_iter()
+                            .map(|index: usize| html! {
+                                <div class={"board"}>{
+                                    indecies.clone()
+                                        .into_iter()
+                                        .map(|(x_pos, y_pos): (usize, usize)| {
+                                            match self.boards.board[x_pos][y_pos].fired_state[index] {
+                                                FiredState::Untouched => {
+                                                    html! {
+                                                        <button class={map_button_class("untouched", x_pos, y_pos)} onclick={onclick(x_pos, y_pos, index)}></button>
+                                                    }
+                                                }
+                                                FiredState::Miss => {
+                                                    html! {
+                                                        <button class={map_button_class("miss", x_pos, y_pos)}></button>
+                                                    }
+                                                }
+                                                FiredState::Hit => {
+                                                    html! {
+                                                        <button class={map_button_class("hit", x_pos, y_pos)}></button>
+                                                    }
+                                                }
+                                            }
+                                        })
+                                        .collect::<Html>()
+                                }</div>
+                            })
+                            .collect::<Html>()
                     }
-                }</style>
-                <div class={"ocean_setting"}>
-                    <div class={"battlefield"}>
-                        <div class={"board"}>
-                            {
-                                indecies
-                                .clone()
-                                .into_iter()
-                                .map(|(index, jndex)| html! {
-                                    if !self.board[index as usize][jndex as usize].player_a_fired {
-                                        <button class={map_button_class("untouched", index, jndex)} onclick={onclick(index, jndex)}></button>
-                                    } else if !self.player_b_ships.iter().fold(false, |acc, ship| acc || ship.check_hit(index, jndex)){
-                                       <button class={map_button_class("miss", index, jndex)}></button>
-                                    } else {
-                                      <button class={map_button_class("hit", index, jndex)}></button>
-                                    }
-                                })
-                                .collect::<Html>()
-                            }
-                        </div>
-                        <div class={"board"}>
-                            {
-                                indecies
-                                .into_iter()
-                                .map(|(index, jndex)| html! {
-                                    if self.player_a_ships.iter().fold(false, |acc, ship| acc || ship.check_hit(index, jndex)){
-                                        <button class={map_button_class("ship", index, jndex)}></button>
-                                    } else {
-                                        <button class={map_button_class("untouched", index, jndex)}></button>
-                                    }
-                                })
-                                .collect::<Html>()
-                            }
-                        </div>
                     </div>
                 </div>
             </div>
@@ -273,5 +272,5 @@ impl Component for Board {
 }
 
 fn main() {
-    yew::Renderer::<Board>::new().render();
+    yew::Renderer::<ClientGame>::new().render();
 }

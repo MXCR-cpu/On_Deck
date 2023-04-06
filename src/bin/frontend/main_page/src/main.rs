@@ -1,37 +1,29 @@
-// use link::Links;
-// use crate::request::get_request;
-use crate::web_error::ErrorTrait;
-use indexmap::IndexMap;
+use frontend::link::GameList;
+use frontend::link::GameListEntry;
+use frontend::site::SITE_LINK;
 use js_sys::Array;
-// use js_sys::Function;
+use std::time::Duration;
+use utils_files::request::{get_request, send_player_amount_update};
+use utils_files::sky::Sky;
+use utils_files::web_error::{web_log, ErrorTrait};
 use wasm_bindgen::JsValue;
-// use web_sys::EventSource;
 use web_sys::{Storage, Window};
 use yew::classes;
 use yew::prelude::*;
-use yew::{
-    html,
-    virtual_dom::{ApplyAttributeAs, Attributes},
-    AttrValue,
-};
-
-mod request;
-mod web_error;
-pub mod sky;
+use yew::{html, platform::time::sleep};
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
-const SITE_LINK: &str = "http://127.0.0.1:8000";
+// const SITE_LINK: &str = "http://127.0.0.1:8000";
 const DONATION_MESSAGE: &str = "Although I am not accepting donations right now, just know that I respect and appreciate your consideration.\n\n\n - MXCR_cpu -";
 const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
 const INFORMATION: &str =
     "Personal Website as well as explanation of tech stack will be made available in the future";
-//stream_links is the argument
 
 #[allow(dead_code)]
 pub struct Menu {
     number_of_players: u8,
-    links: Option<Attributes>,
+    links: Option<GameList>,
     day: bool,
     settings: bool,
     player_id: String,
@@ -55,8 +47,9 @@ pub enum MenuMsg {
     Send(u8),
     Sent,
     NotSending,
-    ReceivedLinks(Vec<String>),
     ReceivedId(String),
+    AwaitUpdate,
+    UpdateLinks(Vec<GameListEntry>),
     NotReceived,
     None,
 }
@@ -103,10 +96,8 @@ impl Component for Menu {
                         "battleship: player_id not found, retrieving new player_id...",
                     )));
                     _ctx.link().send_future(async move {
-                        match request::get_request::<u32>(
-                            format!("{}/get_player_id", SITE_LINK).as_str(),
-                        )
-                        .await
+                        match get_request::<u32>(format!("{}/get_player_id", SITE_LINK).as_str())
+                            .await
                         {
                             Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
                             Err(_) => Self::Message::NotReceived,
@@ -117,6 +108,22 @@ impl Component for Menu {
             },
             Err(error) => error.log_error(),
         };
+        _ctx.link().send_future(async move {
+            match get_request::<Vec<GameListEntry>>(
+                format!("{}/active_game_links", SITE_LINK).as_str(),
+            )
+            .await
+            {
+                Ok(result) => Self::Message::UpdateLinks(result),
+                Err(error) => {
+                    web_sys::console::log_2(
+                        &"board_page: create(): get_request(), 112;".into(),
+                        &JsValue::from(error),
+                    );
+                    Self::Message::NotReceived
+                }
+            }
+        });
         Self {
             number_of_players: 2,
             links: None,
@@ -157,47 +164,32 @@ impl Component for Menu {
             }
             Self::Message::Send(number_of_players) => {
                 _ctx.link().send_future(async move {
-                    match request::send_player_amount_update(number_of_players).await {
+                    match send_player_amount_update(number_of_players).await {
                         Ok(()) => Self::Message::Sent,
                         Err(_) => Self::Message::NotSending,
                     }
                 });
             }
-            Self::Message::Sent => {
-                _ctx.link().send_future(async move {
-                    match request::get_request::<Vec<String>>(
-                        format!("{}/stream", SITE_LINK).as_str(),
-                    )
-                    .await
-                    {
-                        Ok(links) => Self::Message::ReceivedLinks(links),
-                        Err(_) => Self::Message::NotReceived,
-                    }
-                });
-            }
             Self::Message::ReceivedId(player_id) => {
-                web_error::web_log(format!("battleship: new player_id: {}", player_id));
+                web_log(format!("battleship: new player_id: {}", player_id));
                 self.player_id = player_id;
                 self.storage.set_item("player_id", &self.player_id).unwrap();
             }
-            Self::Message::ReceivedLinks(links) => {
-                web_error::web_log("battleship: received game links".to_string());
-                let mut links_index_array: IndexMap<AttrValue, (AttrValue, ApplyAttributeAs)> =
-                    IndexMap::new();
-                let mut index: i8 = 0;
-                for link in links.into_iter() {
-                    *links_index_array
-                        .entry(AttrValue::from(index.to_string()))
-                        .or_insert((
-                            AttrValue::from("".to_string()),
-                            ApplyAttributeAs::Attribute,
-                        )) = (
-                        AttrValue::from(format!("{}", link)),
-                        ApplyAttributeAs::Attribute,
-                    );
-                    index += 1;
-                }
-                self.links = Some(Attributes::IndexMap(links_index_array));
+            Self::Message::AwaitUpdate => {
+                _ctx.link().send_future(async move {
+                    sleep(Duration::from_secs(5)).await;
+                    Self::Message::UpdateLinks(
+                        get_request::<Vec<GameListEntry>>(
+                            format!("{}/active_game_links", SITE_LINK).as_str(),
+                        )
+                        .await
+                        .unwrap(),
+                    )
+                });
+            }
+            Self::Message::UpdateLinks(game_links) => {
+                self.links = Some(game_links);
+                _ctx.link().send_message(Self::Message::AwaitUpdate);
             }
             _ => {}
         }
@@ -214,7 +206,7 @@ impl Component for Menu {
                             <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
                     } else {
-                        <sky::Sky max_stars={35} star_size={5} />
+                        <Sky max_stars={35} star_size={5} />
                         <div class={classes!("main_screen_ship", "ship_night")}>
                             <img src={format!("{}/extra_files/Menu_Ship_Night.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
@@ -264,10 +256,10 @@ impl Menu {
                                 match &self.links {
                                     Some(item) => item
                                         .iter()
-                                        .map(|(_key, value): (&str, &str)| html!{
+                                        .map(|entry: &GameListEntry| html!{
                                             <li><a class={classes!("links", "font")}
-                                                href={format!("{}/game/{}/{}", SITE_LINK, value, self.player_id)}>
-                                                { format!("Game {}", value) }
+                                                href={format!("{}/game/{}/{}", SITE_LINK, entry.game_record_number, self.player_id)}>
+                                                { format!("{:#}", entry) }
                                                 </a>
                                             </li>
                                         })

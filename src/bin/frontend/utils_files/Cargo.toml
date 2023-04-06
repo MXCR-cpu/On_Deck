@@ -1,21 +1,15 @@
 [package]
-name = "frontend"
+name = "utils_files"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[lib]
-path = "../../../lib.rs"
 
 [dependencies]
-utils_files = { path = "../utils_files" }
 js-sys = "0.3.61"
 rand = "0.8.5"
 reqwest = { version = "0.11.16", features = ["json"] }
 serde = "1.0.159"
-stylist = { version = "0.11.0", features = ["yew_integration"] }
 wasm-bindgen = "0.2.84"
 web-sys = { version = "0.3.61", features = ["Storage", "Window", "console"] }
 yew = { version = "0.20.0", features = ["csr"] }
-getrandom = { version = "0.2.8", features = ["js"] }
-regex = "1.7.3"

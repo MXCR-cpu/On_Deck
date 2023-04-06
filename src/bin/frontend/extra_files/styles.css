@@ -111,10 +111,10 @@
 	overflow: hidden;
 }
 
-.links > :link {
+.links  {
 	font-size: 12pt;
 	color: white !important;
-	/* text-decoration: none !important; */
+	text-decoration: none !important;
 }
 
 .background {
