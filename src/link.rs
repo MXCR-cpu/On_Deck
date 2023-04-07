@@ -1,22 +1,51 @@
-use serde::{Deserialize, Serialize};
-use rand::prelude::*;
+use serde::{Serialize, Deserialize};
+use std::fmt;
+
+pub type GameList = Vec<GameListEntry>;
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Links {
-    hyperlinks: Vec<u32>,
+pub struct GameListEntry {
+    pub game_record_number: u64,
+    total_positions: usize,
+    active_player_names: Vec<String>,
 }
 
-impl Links {
-    pub fn new(number_of_players: u8) -> Self {
-        let mut rng = rand::thread_rng();
+impl GameListEntry {
+    pub fn new(game_record_number: u64, total_positions: usize) -> Self {
         Self {
-            hyperlinks: (0..number_of_players)
-                .map(|_| (rng.gen::<f64>() * 1000.0) as u32)
-                .collect::<Vec<u32>>(),
+            game_record_number,
+            total_positions,
+            active_player_names: Vec::new(),
         }
     }
 
-    pub fn get_links(&self) -> Vec<u32> {
-        self.hyperlinks.clone()
+    pub fn add_player(&self, player_name: String) -> Result<Self, &str> {
+        if self.is_full() {
+            return Err("Game is already full");
+        }
+        let mut player_list: Vec<String> = self.active_player_names.clone();
+        player_list.push(player_name);
+        Ok(Self {
+            game_record_number: self.game_record_number,
+            total_positions: self.total_positions,
+            active_player_names: player_list,
+        })
+    }
+
+    fn is_full(&self) -> bool {
+        self.active_player_names.len() == self.total_positions
+    }
+}
+
+impl fmt::Display for GameListEntry {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let taken_positions: u8 = self.active_player_names.len() as u8;
+        formatter.write_fmt(format_args!(
+            "Game {:0>3}   {}/{}   {:?}",
+            self.game_record_number,
+            taken_positions,
+            self.total_positions,
+            self.active_player_names
+        ))
     }
 }

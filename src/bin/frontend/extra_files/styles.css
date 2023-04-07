@@ -37,6 +37,7 @@
 	transform: translate(0%, -50%);
 	grid-template-columns: repeat(auto-fit, calc(var(--button_width) / 3));
 	grid-gap: calc(var(--button_width) / 12);
+	z-index: 3;
 }
 
 .top_row > button {
@@ -63,6 +64,7 @@
 	border-radius: var(--standard_radius);
 	padding: calc(var(--standard_radius) * 2);
 	transition: background-color 5s ease;
+	z-index: 2;
 }
 
 .panel_header {
@@ -109,10 +111,58 @@
 	overflow: hidden;
 }
 
-.links > :link {
+.links  {
 	font-size: 12pt;
 	color: white !important;
-	/* text-decoration: none !important; */
+	text-decoration: none !important;
+}
+
+.background {
+	position: fixed;
+	height: 100%;
+	width: 100%;
+	left: 0%;
+	bottom: 0%;
+	z-index: 1;
+}
+
+.sky_whole {
+	position: fixed;
+	height: 100%;
+	width: 100%;
+	top: 0%;
+	left: 0%;
+	transition: background-color 3s ease;
+	overflow: hidden;
+}
+
+.sky_day {
+	background-color: var(--normal_sky_color);
+}
+
+.sky_night {
+	background-color: var(--night_sky_color);
+}
+
+.ship_night {
+	opacity: 0.97;
+}
+
+.main_screen_ship {
+	position: fixed;
+	bottom: 0%;
+	transition: opacity 3s ease;
+	animation: 3s infinite rocking alternate;
+}
+
+@keyframes rocking {
+	from {
+		bottom: -13%;
+	}
+
+	to {
+		bottom: -10%;
+	}
 }
 
 /* board_page */

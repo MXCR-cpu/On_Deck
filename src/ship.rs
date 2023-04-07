@@ -1,9 +1,9 @@
-use rocket::serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Ship {
     name: String,
-    location: Vec<(i8, i8)>,
+    location: Vec<(usize, usize)>,
 }
 
 #[allow(dead_code)]
@@ -15,7 +15,7 @@ enum Direction {
 }
 
 impl Ship {
-    pub fn new(ship_name: String, pos: Result<Vec<(i8, i8)>, String>) -> Self {
+    pub fn new(ship_name: String, pos: Result<Vec<(usize, usize)>, String>) -> Self {
         match pos {
             Ok(p) => Self {
                 name: ship_name,
@@ -36,17 +36,18 @@ impl Ship {
         .into_iter()
         .enumerate()
         .map(|(index, (name, size))| {
-            Self::new(
-                name,
-                Self::direction((0, index as i8), size, Direction::East),
-            )
+            Self::new(name, Self::direction((0, index), size, Direction::East))
         })
         .collect::<Vec<Self>>() // make sure to include ship collision detection
     }
 
-    fn direction(pos: (i8, i8), size: i8, direction: Direction) -> Result<Vec<(i8, i8)>, String> {
+    fn direction(
+        pos: (usize, usize),
+        size: usize,
+        direction: Direction,
+    ) -> Result<Vec<(usize, usize)>, String> {
         Ok((0..size)
-            .map(|index| {
+            .map(|index: usize| {
                 (
                     match direction {
                         Direction::East => pos.0 + index,
@@ -60,13 +61,23 @@ impl Ship {
                     },
                 )
             })
-            .collect::<Vec<(i8, i8)>>())
+            .collect::<Vec<(usize, usize)>>())
     }
 
-    #[allow(dead_code)]
-    fn check_hit(&self, index: i8, jndex: i8) -> bool {
+    pub fn check_hit(&self, index: usize, jndex: usize) -> bool {
         self.location
             .iter()
             .fold(false, |acc, pos| acc || (pos.0 == index && pos.1 == jndex))
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ShipSet;
+
+impl ShipSet {
+    pub fn new(players: usize) -> Vec<Vec<Ship>> {
+        (0..players)
+            .map(|_| Ship::new_ships())
+            .collect::<Vec<Vec<Ship>>>()
     }
 }

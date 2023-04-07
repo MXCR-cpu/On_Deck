@@ -5,10 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "link"
-path = "../../../link.rs"
+path = "../../../lib.rs"
 
 [dependencies]
+utils_files = { path = "../utils_files" }
 getrandom = { version = "0.2", features = ["js"] }
 futures = "0.3.27"
 indexmap = "1.9.3"
@@ -24,7 +24,7 @@ wasm-bindgen = "0.2.84"
 wasm-bindgen-futures = "0.4.34"
 yew = { version = "0.20.0", features = ["csr"] }
 state = "0.5.3"
-web-sys = { version = "0.3.61", features = ["Storage", "Window", "console", "EventSource"] }
+web-sys = { version = "0.3.61", features = ["Storage", "Window", "console"] }
 tokio = { version = "1.27.0", features = ["rt", "sync"] }
 futures-channel = "0.3.28"
 tokio-stream = "0.1.12"

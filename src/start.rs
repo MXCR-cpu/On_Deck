@@ -25,3 +25,10 @@ fn set_rocket_database() {
         .status()
         .expect("build.rs: Failed to set ROCKET_DATABASES");
 }
+
+pub fn stop_rocket_database() {
+    Command::new("docker")
+        .args(&["stop", "redis-stack-server"])
+        .status()
+        .expect("build.rs: Failed to set ROCKET_DATABASES");
+}
