@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 
-// const SIZE_LIMIT: u64 = 256;
 #[derive(Serialize, Deserialize)]
 pub struct FirePosition {
     lat: usize,
@@ -29,6 +28,8 @@ pub enum FiredState {
     Hit,
     Miss,
     Untouched,
+    Empty,
+    Ship
 }
 
 #[derive(Serialize, Deserialize, Clone)]

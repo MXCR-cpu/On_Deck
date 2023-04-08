@@ -13,6 +13,8 @@ edition = "2021"
 url = "redis://default:redispw@localhost:55001"
 
 [dependencies]
+interact = { path = "src/interact" }
+mechanics = { path = "src/mechanics" }
 deadpool = "0.9.5"
 juniper = "0.15.11"
 juniper_rocket = "0.8.2"
@@ -23,4 +25,6 @@ rocket_contrib = "0.4.11"
 rocket_db_pools = { version = "0.1.0-rc.2", features = ["deadpool_redis"] }
 serde = "1.0.157"
 serde_json = "1.0.94"
+getrandom = "0.2.9"
+ring = "0.16.20"
 

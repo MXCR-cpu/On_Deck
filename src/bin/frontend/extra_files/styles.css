@@ -1,4 +1,3 @@
-
 :root {
 	--button_number: 3;
 	--button_height: 100px;
@@ -149,10 +148,13 @@
 }
 
 .main_screen_ship {
+	opacity: 1.0;
 	position: fixed;
 	bottom: 0%;
-	transition: opacity 3s ease;
-	animation: 3s infinite rocking alternate;
+	animation-name: rocking, fadeIn;
+	animation-duration: 3s, 3s;
+	animation-iteration-count: infinite, 1;
+	animation-direction: alternate, normal;
 }
 
 @keyframes rocking {
@@ -162,6 +164,16 @@
 
 	to {
 		bottom: -10%;
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	
+	to {
+		opacity: 1;
 	}
 }
 
@@ -214,24 +226,28 @@
 }
 
 .main_button_untouched {
-	background-color: rgba(0,0,0,0.25);
+	background-color: rgba(0,0,0,0.5);
 }
 
 .main_button_untouched:hover {
-  background-color: rgba(256,256,256,0.25);
+  background-color: rgba(0,0,0,0.1);
   opacity: 1;
-}
-
-.main_button_ship {
-  background-color: grey;
-}
-
-.main_button_miss {
-  background-color: rgba(0,0,0,0);
 }
 
 .main_button_hit {
   background-color: red;
+}
+
+.main_button_miss {
+  background-color: rgba(256,256,256,0.5);
+}
+
+.main_button_empty {
+  background-color: rgba(0,0,0,0);
+}
+
+.main_button_ship {
+  background-color: grey;
 }
 
 .button_row_0 {
