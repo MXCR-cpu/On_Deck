@@ -1,23 +1,22 @@
-use frontend::board::Board;
-use frontend::position::FirePosition;
-use frontend::position::FiredState;
-use frontend::site::SITE_LINK;
+use mechanics::board::Board;
+use mechanics::position::FirePosition;
+use mechanics::position::FiredState;
+use interact::site::SITE_LINK;
 use regex::Regex;
 use std::time::Duration;
 use utils_files::request::fire_on_position;
 use utils_files::request::get_request;
 #[allow(unused_imports)]
 use utils_files::sky::Sky;
+use utils_files::window_state::ClientWindow;
 use wasm_bindgen::JsValue;
-use web_sys::{Storage, Window};
 use yew::classes;
 use yew::platform::time::sleep;
 use yew::prelude::*;
 
 struct ClientGame {
-    day: bool,
+    client_window: ClientWindow,
     boards: Board,
-    player_id: String,
     game_number: u32,
 }
 
@@ -25,7 +24,6 @@ enum ClientGameMsg {
     Fire(usize, usize, usize),
     Fired,
     NotFired,
-    ReceivedId(String),
     NotReceived,
     UpdateBoardGame(Board),
     Sent,
@@ -36,83 +34,17 @@ impl Component for ClientGame {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        let window: Window = match web_sys::window() {
-            Some(window) => window,
-            None => {
-                web_sys::console::log_1(&JsValue::from(
-                    "board_page/src/main.rs: create(): Window object not found; ",
-                ));
-                panic!()
-            }
-        };
-        let storage: Storage = match window.local_storage() {
-            Ok(option) => match option {
-                Some(storage) => storage,
-                None => {
-                    web_sys::console::log_1(&JsValue::from(
-                        "board_page/src/main.rs: create(): Storage object not found; ",
-                    ));
-                    panic!()
-                }
-            },
+        let client_window: ClientWindow = match ClientWindow::new() {
+            Ok(window_state) => window_state,
             Err(error) => {
-                web_sys::console::log_2(
-                    &JsValue::from("board_page/src/main.rs: create(): Storage object not found; \n\t"),
-                    &error,
-                );
-                panic!()
-            }
-        };
-        let player_id: String = match storage.get_item("player_id") {
-            Ok(value) => match value {
-                Some(inner_player_id) => inner_player_id.to_string(),
-                None => {
-                    web_sys::console::log_1(&JsValue::from(
-                        "board_page/src/main.rs: create(), 68: player_id item not found, retrieving new player_id...",
-                    ));
-                    _ctx.link().send_future(async move {
-                        match get_request::<u32>(format!("{}/get_player_id", SITE_LINK).as_str())
-                            .await
-                        {
-                            Ok(player_id) => Self::Message::ReceivedId(player_id.to_string()),
-                            Err(_) => Self::Message::NotReceived,
-                        }
-                    });
-                    String::new()
-                }
-            },
-            Err(error) => {
-                web_sys::console::log_2(
-                    &JsValue::from("board_page/src/main.rs: create(): Storage object not found; \n\t"),
-                    &error,
-                );
-                panic!()
-            }
-        };
-        let day: bool = match storage.get_item("day_setting") {
-            Ok(value) => match value
-                .unwrap_or_else(|| {
-                    storage.set_item("day_setting", "day").unwrap();
-                    "day".to_string()
-                })
-                .as_str()
-            {
-                "day" => true,
-                "night" => false,
-                _ => false,
-            },
-            Err(error) => {
-                web_sys::console::log_2(
-                    &JsValue::from("board_page/src/main.rs: create(): Could not access storage; \n\t"),
-                    &error,
-                );
+                web_sys::console::log_1(&JsValue::from(error));
                 panic!()
             }
         };
         let game_number: u32 = match Regex::new(r"\d+").unwrap().find(
             Regex::new(r"game/\d+")
                 .unwrap()
-                .find(&window.location().href().unwrap())
+                .find(&client_window.window.location().href().unwrap())
                 .unwrap()
                 .as_str(),
         ) {
@@ -145,9 +77,8 @@ impl Component for ClientGame {
             }
         });
         Self {
+            client_window,
             boards: Board::empty(),
-            day,
-            player_id,
             game_number,
         }
     }
@@ -174,9 +105,6 @@ impl Component for ClientGame {
                     }
                 }
             }),
-            Self::Message::ReceivedId(player_id) => {
-                self.player_id = player_id;
-            }
             Self::Message::UpdateBoardGame(game_state) => {
                 self.boards = game_state;
                 _ctx.link().send_message(Self::Message::Sent);
@@ -231,8 +159,8 @@ impl Component for ClientGame {
             )
         };
         html! {
-            <div>
-                <div class={classes!("ocean_setting", if self.day { "sky_day" } else { "sky_night" })}>
+            <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
+                <div class={"ocean_setting"}>
                     <div class={"battlefield"}>{
                         (0..*number_of_players)
                             .into_iter()
@@ -255,6 +183,16 @@ impl Component for ClientGame {
                                                 FiredState::Hit => {
                                                     html! {
                                                         <button class={map_button_class("hit", x_pos, y_pos)}></button>
+                                                    }
+                                                }
+                                                FiredState::Empty => {
+                                                    html! {
+                                                        <button class={map_button_class("empty", x_pos, y_pos)}></button>
+                                                    }
+                                                }
+                                                FiredState::Ship => {
+                                                    html! {
+                                                        <button class={map_button_class("ship", x_pos, y_pos)}></button>
                                                     }
                                                 }
                                             }

@@ -1,3 +1,14 @@
 [build]
+target = "index.html"
+release = false
+dist = "dist"
 public_url = "/main/"
+filehash = true
+
+[clean]
+dist = "dist"
+cargo = true
+
+[[proxy]]
+backend = "http://127.0.0.1:8000/stream"
 
