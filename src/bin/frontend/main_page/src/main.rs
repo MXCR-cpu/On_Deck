@@ -4,7 +4,6 @@ use interact::site::SITE_LINK;
 use std::time::Duration;
 use utils_files::request::{get_request, send_player_amount_update};
 use utils_files::sky::Sky;
-use utils_files::web_error::web_log;
 use utils_files::window_state::ClientWindow;
 use wasm_bindgen::JsValue;
 use yew::classes;
