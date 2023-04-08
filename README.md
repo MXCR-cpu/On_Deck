@@ -2,13 +2,23 @@
 *Future svg Image*
 
 ## TODO:
-- [ ] Implement turn based progression
-- [ ] Implement end sequence (win / loss)
+- [ ] User game authentication
+	- [ ] Additional hashed private_id_key
+	- [ ] Optional spectating feature for lost players
 - [ ] Update board_page styles
-- [ ] Implement User game authentication and spectating
-- [ ] Create SVG tab image
-- [ ] Create SVG Github image
+	- [ ] Add an empty board style
+	- [ ] Add an ship board style
+	- [ ] Possibly include ships
+- [ ] Turn based progression
+	- [ ] End sequence (win / loss)
+- [ ] Settings Page
+	- [ ] Style Page for main_page
+	- [ ] User Player Id Updating
+	- [ ] Graphics Adjuster (Stars, Clouds, Blur, Animations)
+- [ ] SVG tab image
+- [ ] SVG Github image
 - [ ] Configure usability for smaller screens
 
 ### Additional TODO:
 - [ ] Determine how many players a single instance can support (How many Rocket workers are there?)
+- [ ] Perhap retry to incorporate Server-Side events into the application again
