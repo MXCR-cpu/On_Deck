@@ -5,8 +5,9 @@
 - [ ] User game authentication
 	- [X] Add additional hashed private_id_key
 	- [ ] Allow server the ability to authenticate user fire requests
-		- Client-side half of sealing-key process, 
-			incorporate it in the JSON response sent towards the fire handle function.
+		- [ ] Client-side half of sealing-key process, 
+			- [ ] Find a way to have the client register a new challenge with the game_state requests
+			- [ ] Incorporate it in the JSON response sent towards the fire handle function.
 	- [ ] Optional spectating feature for lost or spectator players
 - [ ] Update board_page rendering
 	- [X] Add an empty board style

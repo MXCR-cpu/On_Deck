@@ -10,11 +10,6 @@ pub struct ClientWindow {
     pub day: bool,
 }
 
-// status: flags:
-// 0b0001: No predefined settings
-// 0b0010: No player_id tag
-// 0b0100: No player_id key
-
 impl ClientWindow {
     pub fn new() -> Result<Self, String> {
         let window: Window = Self::get_window()?;

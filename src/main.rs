@@ -6,11 +6,14 @@ use crate::database::{
     database_get, database_set, json_database_get, json_database_set, RedisDatabase,
 };
 // use battleship::board::Board;
+use battleship::keys::PlayerKeys;
+use battleship::start;
+use database::json_database_get_simple;
+use ecies::{decrypt, utils::generate_keypair};
+use interact::link::{GameList, GameListEntry};
 use mechanics::game::Game;
 use mechanics::position::FirePosition;
-use battleship::start;
-use interact::link::{GameList, GameListEntry};
-use database::json_database_get_simple;
+use rand::{distributions::Alphanumeric, Rng};
 use rocket::{
     fairing::AdHoc,
     fs::NamedFile,
@@ -19,13 +22,7 @@ use rocket::{
 };
 use rocket_db_pools::{deadpool_redis::redis, Connection, Database};
 use serde::{Deserialize, Serialize};
-use getrandom::getrandom;
 use std::{collections::HashMap, path::PathBuf};
-use ring::aead::UnboundKey;
-use ring::aead::LessSafeKey;
-use ring::aead::AES_128_GCM;
-use ring::aead::Aad;
-use ring::aead::Nonce;
 
 pub mod database;
 
@@ -36,7 +33,6 @@ struct NumberOfPlayers {
 
 const MAIN_DIR: &str = "src/bin/frontend/main_page/";
 const BOARD_DIR: &str = "src/bin/frontend/board_page/";
-const KEY_SIZE: usize = 64;
 
 // Utility Functions
 async fn return_file(item: String) -> Result<NamedFile, NotFound<String>> {
@@ -59,27 +55,27 @@ async fn intercept_start(_rds: Connection<RedisDatabase>) -> Redirect {
 //TODO: Perhaps create a unique hashing function that allows the player_id to
 //be securely hidden from the client side
 #[get("/get_player_id")]
-async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(u32, Vec<u8>)> {
+async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(String, String)> {
     let _res: u32 = database_get(&"player_id_count", &mut rds)
         .await
         .unwrap_or("0".to_string())
         .parse::<u32>()
         .unwrap();
+    let player_index: String = format!("player_{}", _res);
     database_set(
         &vec!["player_id_count", (_res + 1).to_string().as_str()],
         &mut rds,
     )
     .await
     .unwrap();
-    let mut authentication_key: Vec<u8> = [0; KEY_SIZE].to_vec();
-    getrandom(&mut authentication_key).unwrap();
+    let player_keys: PlayerKeys = PlayerKeys::new(generate_keypair());
     database_set(
-        &vec![&format!("player_{}", _res), &format!("{:?}", authentication_key)],
-        &mut rds
+        &vec![&player_index, &serde_json::to_string(&player_keys).unwrap()],
+        &mut rds,
     )
-        .await
-        .unwrap();
-    Json((_res, authentication_key.to_vec()))
+    .await
+    .unwrap();
+    Json((player_index, std::str::from_utf8(&player_keys.encryption_key).unwrap().to_string()))
 }
 
 #[post("/start", format = "json", data = "<players_obj>")]
@@ -124,14 +120,13 @@ async fn start_game(mut rds: Connection<RedisDatabase>, players_obj: Json<HashMa
 
 #[get("/active_game_links")]
 async fn get_active_game_links(mut rds: Connection<RedisDatabase>) -> Result<String, String> {
-    match json_database_get_simple(&vec!["current_games", "."], &mut rds)
-        .await {
-            Ok(result) => Ok(result),
-            Err(error) => {
-                println!("{}", error);
-                Err(error)
-            }
+    match json_database_get_simple(&vec!["current_games", "."], &mut rds).await {
+        Ok(result) => Ok(result),
+        Err(error) => {
+            println!("{}", error);
+            Err(error)
         }
+    }
 }
 
 // Game Page Functions
@@ -144,79 +139,116 @@ async fn process_game_request(
     player_id: String,
 ) -> Result<NamedFile, NotFound<String>> {
     let game_tag: String = format!("game_{}", game_id);
-    let number_of_players: usize = json_database_get::<_, usize>(&vec![game_tag.as_str(), ".number_of_players"], &mut rds)
-        .await
-        .unwrap();
-    let mut current_players: Vec<String> = json_database_get::<_, Vec<String>>(&vec![game_tag.as_str(), ".player_tags"], &mut rds)
-        .await
-        .unwrap();
-    if current_players.len() == number_of_players {
+    let number_of_players: usize =
+        json_database_get::<_, usize>(&vec![game_tag.as_str(), ".number_of_players"], &mut rds)
+            .await
+            .unwrap();
+    let mut current_players: Vec<String> =
+        json_database_get::<_, Vec<String>>(&vec![game_tag.as_str(), ".player_tags"], &mut rds)
+            .await
+            .unwrap();
+    if current_players.len() == number_of_players || current_players.contains(&player_id) {
         return return_file(format!("{}dist/{}", BOARD_DIR, "index.html")).await;
     }
     current_players.push(player_id);
-    json_database_set::<Vec<String>>(&[game_tag.as_str(), ".player_tags"], &current_players, &mut rds)
-        .await
-        .unwrap();
+    json_database_set::<Vec<String>>(
+        &[game_tag.as_str(), ".player_tags"],
+        &current_players,
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    json_database_set::<Vec<String>>(
+        &[
+            "current_games",
+            &format!(".[{}].active_player_names", game_id - 1),
+        ],
+        &current_players,
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    if current_players.len() < number_of_players {
+        return return_file(format!("{}dist/{}", BOARD_DIR, "index.html")).await;
+    }
     // Kick-off the game and create challenges
     if current_players.len() == number_of_players {
-        let mut challenges: Vec<Vec<u8>> = Vec::new();
-        for player in current_players.iter() {
-            let player_key: [u8; KEY_SIZE] = json_database_get::<_, Vec<u8>>(player, &mut rds)
-                .await
-                .unwrap()
-                .try_into()
-                .unwrap();
-            // I have no clue what I'm doing
-            let mut message_bytes: Vec<u8> = "The game has begun".as_bytes().to_vec();
-            let player_aad = Aad::from(player.as_bytes());
-            // The Nonce key must be unique for the lifetime of the less_safe_key this is difficult because
-            // the client does not have information concerning the Nonce key so this key may not be the
-            // ideal key for this application going forward.
-            let nonce: Nonce = Nonce::assume_unique_for_key([1,2,3,4,5,6,7,8,9,10,11,12]);
-            let unbound_key: UnboundKey = UnboundKey::new(&AES_128_GCM, &player_key).unwrap();
-            let less_safe_key: LessSafeKey = LessSafeKey::new(unbound_key);
-            less_safe_key.seal_in_place_append_tag(nonce, player_aad, &mut message_bytes).unwrap();
-            challenges.push(message_bytes);
-        }
-        json_database_set::<Vec<Vec<u8>>>(&[game_tag.as_str(), ".player_tags"], &challenges, &mut rds)
-            .await
-            .unwrap();
+        let random_challenge: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect::<String>();
+        json_database_set::<String>(
+            &[game_tag.as_str(), ".challenge"],
+            &random_challenge,
+            &mut rds,
+        )
+        .await
+        .unwrap();
     }
     return_file(format!("{}dist/{}", BOARD_DIR, "index.html")).await
 }
 
-#[get("/<_game_id>")]
-async fn get_game_state(mut rds: Connection<RedisDatabase>, _game_id: u32) -> Result<String, String> {
-    match json_database_get_simple(&vec![format!("game_{}", _game_id).as_str(), ".boards"], &mut rds)
+#[get("/<game_id>")]
+async fn get_game_state(
+    mut rds: Connection<RedisDatabase>,
+    game_id: u32,
+) -> Json<(String, String)> {
+    let game_challenge: String = 
+        json_database_get(&vec![format!("game_{}", game_id).as_str(), ".challenge"], &mut rds)
         .await
-        {
-            Ok(result) => Ok(result),
-            Err(error) => {
-                println!("{}", error);
-                Err(error)
-            }
+        .unwrap();
+    match json_database_get_simple(
+        &vec![format!("game_{}", game_id).as_str(), ".boards"],
+        &mut rds,
+    )
+    .await
+    {
+        Ok(boards) => Json((game_challenge, boards)),
+        Err(error) => {
+            println!("{}", error);
+            Json(("".to_string(),"".to_string()))
         }
+    }
 }
 
 // Board Page Functions
 //TODO: Find a way to allow turn-progression tracking on the backend
 //and inhibit fire request if true
-#[post("/fire/<_game_id>", format = "json", data = "<fire_position>")]
+#[post("/fire/<game_id>", format = "json", data = "<fire_position_json>")]
 async fn fire(
     mut rds: Connection<RedisDatabase>,
-    fire_position: Json<FirePosition>,
-    _game_id: u32,
+    fire_position_json: Json<FirePosition>,
+    game_id: u32,
 ) -> Json<String> {
+    let game_tag: String = format!("game_{}", game_id);
+    let fire_position: FirePosition = fire_position_json.into_inner();
+    let active_game_challenge: String =
+        json_database_get::<_, String>(&vec![game_tag.as_str(), ".challenge"], &mut rds)
+            .await
+            .unwrap();
+    let player_keys: PlayerKeys =
+        json_database_get(&vec![fire_position.from_player.as_str(), "."], &mut rds)
+            .await
+            .unwrap();
+    // Verify request and update fired state for player
+    if !active_game_challenge.eq(&std::str::from_utf8(
+        &decrypt(&player_keys.decryption_key, &fire_position.challenge).unwrap(),
+    )
+    .unwrap())
+    {
+        return Json("Rejectd Fire Order".to_string());
+    }
     redis::cmd("JSON.SET")
         .arg(&[
-            "game",
-            fire_position.into_inner().print().as_str(),
+            game_tag.as_str(),
+            fire_position.print().as_str(),
             "'\"true\"'",
         ])
         .query_async::<_, ()>(&mut *rds)
         .await
         .unwrap();
-    Json("Coordinate Received".to_string())
+    Json("Processed Fire Order".to_string())
 }
 
 #[get("/<path..>")]

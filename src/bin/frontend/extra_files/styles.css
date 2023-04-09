@@ -6,14 +6,13 @@
 	--button_color_dormant: rgba(0,0,0,0.25);
 	--button_color_hovered: rgba(256,256,256,0.25);
 	--panel_color_background: rgba(0,0,0,0.25);
-	--board_width: 400px;
+	--board_width: 500px;
 	--board_height: 400px;
 	--battlefield_padding: 10px;
 	--sky_color: #00B5E2;
 	--normal_sky_color: #00B5E2;
 	--night_sky_color: #13294B;
-	--ocean_color: #0065C4;
-	--normal_ocean_color: #0065C4;
+	--day_ocean_color: #0065C4;
 	--night_ocean_color: #08101c;
 	--standard_radius: 20px;
 	--standard_padding: 10px;
@@ -143,6 +142,14 @@
 	background-color: var(--night_sky_color);
 }
 
+.ocean_day {
+	background-color: var(--normal_ocean_color);
+}
+
+.ocean_night {
+	background-color: var(--night_ocean_color);
+}
+
 .ship_night {
 	opacity: 0.97;
 }
@@ -185,28 +192,27 @@
 	left: 0%;
 	bottom: 0%;
 	transform: translate(0%, 0%);
-	overflow: hidden;
+	/* overflow: hidden; */
 }
 
 .battlefield {
-	position: absolule;
-	top: 50%;
+	position: absolute;
 	left: 50%;
 	height: 100%;
-	width: auto;
+	width: 75%;
 	padding: var(--battlefield_padding);
-	background-color: var(--ocean_color);
-	/* display: grid; */
-	/* grid-template-columns: repeat(auto-fill, var(--board_width)); */
-	/* grid-gap: auto; */
+	padding-bottom: var(--battlefield_padding);
+	transform: translate(-50%, 0%);
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 }
 
 .board {
 	position: relative;
 	height: var(--board_height);
-	width: calc(50% - (2 * var(--battlefield_padding)));
+	width: var(--board_width);
+	/* width: calc(50% - (2 * var(--battlefield_padding))); */
 	padding: 10px;
 	display: grid;
 	grid-template-columns: auto auto auto auto auto auto auto auto auto auto;
@@ -226,24 +232,24 @@
 }
 
 .main_button_untouched {
-	background-color: rgba(0,0,0,0.5);
+	opacity: 0.1;
+  	background-color: rgb(256, 256, 256);
 }
 
 .main_button_untouched:hover {
-  background-color: rgba(0,0,0,0.1);
-  opacity: 1;
+  	opacity: 0.2;
 }
 
 .main_button_hit {
-  background-color: red;
+  	background-color: red;
 }
 
 .main_button_miss {
-  background-color: rgba(256,256,256,0.5);
+  	background-color: rgba(256,256,256,0.5);
 }
 
 .main_button_empty {
-  background-color: rgba(0,0,0,0);
+  	background-color: rgba(256,256,256,0.5);
 }
 
 .main_button_ship {

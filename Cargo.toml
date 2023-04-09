@@ -26,5 +26,5 @@ rocket_db_pools = { version = "0.1.0-rc.2", features = ["deadpool_redis"] }
 serde = "1.0.157"
 serde_json = "1.0.94"
 getrandom = "0.2.9"
-ring = "0.16.20"
+ecies = { version = "0.2.3", default-features = false, features = ["pure"] }
 
