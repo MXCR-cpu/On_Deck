@@ -4,15 +4,15 @@
 ## TODO:
 - [ ] User game authentication
 	- [X] Add additional hashed private_id_key
-	- [ ] Allow server the ability to authenticate user fire requests
-		- [ ] Client-side half of sealing-key process, 
-			- [ ] Find a way to have the client register a new challenge with the game_state requests
-			- [ ] Incorporate it in the JSON response sent towards the fire handle function.
-	- [ ] Optional spectating feature for lost or spectator players
+	- [X] Allow server the ability to authenticate user fire requests
+		- [X] Client-side half of sealing-key process, 
+			- [X] Find a way to have the client register a new challenge with the game_state requests
+			- [X] Incorporate it in the JSON response sent towards the fire handle function.
+	- [ ] Spectating feature for lost or spectator players
 - [ ] Update board_page rendering
 	- [X] Add an empty board style
 	- [X] Add an ship board style
-	- [ ] Allow authenticated get request to produce formatted board response
+	- [ ] Add Ship Placement Prompt
 - [ ] Salvo based progression
 	- [ ] New salvo round when all players have fired
 	- [ ] End sequence (win / loss)
@@ -20,8 +20,15 @@
 	- [ ] Style Page for main_page
 	- [ ] User Player Id Updating
 	- [ ] Graphics Adjuster (Stars, Clouds, Blur, Animations)
-- [ ] SVG tab image
-- [ ] SVG Github image
+- [ ] Game Assets (SVG)
+	- [ ] Tab favicon image
+	- [ ] Github image
+	- [ ] In-game ship assets
+		- [ ] Day
+		- [ ] Night
+	- [ ] Optional
+		- [ ] Planes
+		- [ ] Clouds
 - [ ] Configure usability for smaller screens
 
 ### Additional TODO:
