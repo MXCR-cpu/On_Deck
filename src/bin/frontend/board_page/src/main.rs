@@ -1,7 +1,8 @@
+use ecies::encrypt;
+use interact::site::SITE_LINK;
 use mechanics::board::Board;
 use mechanics::position::FirePosition;
 use mechanics::position::FiredState;
-use interact::site::SITE_LINK;
 use regex::Regex;
 use std::time::Duration;
 use utils_files::request::fire_on_position;
@@ -17,6 +18,7 @@ use yew::prelude::*;
 struct ClientGame {
     client_window: ClientWindow,
     boards: Board,
+    challenge: String,
     game_number: u32,
 }
 
@@ -25,7 +27,7 @@ enum ClientGameMsg {
     Fired,
     NotFired,
     NotReceived,
-    UpdateBoardGame(Board),
+    UpdateBoardGame((String, String)),
     Sent,
 }
 
@@ -64,7 +66,7 @@ impl Component for ClientGame {
             }
         };
         _ctx.link().send_future(async move {
-            match get_request::<Board>(format!("{}/game/{}", SITE_LINK, game_number).as_str()).await
+            match get_request::<(String, String)>(format!("{}/game/{}", SITE_LINK, game_number).as_str()).await
             {
                 Ok(result) => Self::Message::UpdateBoardGame(result),
                 Err(error) => {
@@ -79,6 +81,7 @@ impl Component for ClientGame {
         Self {
             client_window,
             boards: Board::empty(),
+            challenge: "".to_string(),
             game_number,
         }
     }
@@ -86,33 +89,42 @@ impl Component for ClientGame {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         let game_number: u32 = self.game_number;
         match msg {
-            Self::Message::Fire(x_pos, y_pos, to) => _ctx.link().send_future(async move {
-                match fire_on_position::<FirePosition>(
-                    FirePosition::new(x_pos, y_pos, to),
-                    game_number,
+            Self::Message::Fire(x_pos, y_pos, to) => {
+                let message_bytes: Vec<u8> = encrypt(
+                    self.client_window.player_id_key.clone().unwrap().as_bytes(),
+                    &self.challenge.as_bytes().to_vec(),
                 )
-                .await
-                {
-                    Ok(_) => Self::Message::Fired,
-                    Err(error) => {
-                        web_sys::console::log_1(
-                            &format!(
-                                "board_page/src/main.rs: update(): Could send fire post request; \n\t{}",
-                                error
-                            ).into()
-                        );
-                        Self::Message::NotFired
-                    }
-                }
-            }),
-            Self::Message::UpdateBoardGame(game_state) => {
-                self.boards = game_state;
+                .unwrap();
+                let sent_player_tag: String = self.client_window.player_id_tag.clone().unwrap();
+                _ctx.link().send_future(async move {
+                    match fire_on_position::<FirePosition>(
+                        FirePosition::new(message_bytes, sent_player_tag, x_pos, y_pos, to),
+                        game_number,
+                        )
+                        .await
+                        {
+                            Ok(_) => Self::Message::Fired,
+                            Err(error) => {
+                                web_sys::console::log_1(
+                                    &format!(
+                                        "board_page/src/main.rs: update(): Could send fire post request; \n\t{}",
+                                        error
+                                        ).into()
+                                    );
+                                Self::Message::NotFired
+                            }
+                        }
+                });
+            }
+            Self::Message::UpdateBoardGame((challenge, game_state)) => {
+                self.boards = serde_json::from_str(&game_state).unwrap();
+                self.challenge = challenge;
                 _ctx.link().send_message(Self::Message::Sent);
             }
             Self::Message::Sent => {
                 _ctx.link().send_future(async move {
                     sleep(Duration::from_secs(5)).await;
-                        match get_request::<Board>(
+                        match get_request::<(String, String)>(
                             format!("{}/game/{}", SITE_LINK, game_number).as_str(),
                         )
                         .await {
@@ -160,7 +172,7 @@ impl Component for ClientGame {
         };
         html! {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
-                <div class={"ocean_setting"}>
+                <div class={classes!("ocean_setting", if self.client_window.day { "ocean_day" } else { "ocean_night" })}>
                     <div class={"battlefield"}>{
                         (0..*number_of_players)
                             .into_iter()

@@ -15,8 +15,7 @@ const MIN_PLAYERS: u8 = 2;
 
 const DONATION_MESSAGE: &str =
     "Although I am not accepting donations right now, just know that I respect and appreciate your consideration.\n\n\n - MXCR_cpu -";
-const GITHUB_LINK: &str =
-    "https://github.com/MXCR-cpu/Battleship";
+const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
 const INFORMATION: &str =
     "Personal Website as well as explanation of tech stack will be made available in the future";
 
@@ -43,7 +42,7 @@ pub enum MenuMsg {
     Send(u8),
     Sent,
     NotSending,
-    ReceivedId((u32, Vec<u8>)),
+    ReceivedId((String, String)),
     AwaitUpdate,
     UpdateLinks(Vec<GameListEntry>),
     NotReceived,
@@ -62,9 +61,12 @@ impl Component for Menu {
                 panic!()
             }
         };
-        if let None = client_window.player_id_tag {
+        client_window.player_id_tag.clone().unwrap_or_else(|| {
+            web_sys::console::log_1(&"board_page: create(): Getting new player_id".into());
             _ctx.link().send_future(async move {
-                match get_request::<(u32, Vec<u8>)>(&format!("{}/get_player_id", SITE_LINK)).await {
+                match get_request::<(String, String)>(&format!("{}/get_player_id", SITE_LINK))
+                    .await
+                {
                     Ok(result) => Self::Message::ReceivedId(result),
                     Err(error) => {
                         web_sys::console::log_2(
@@ -75,7 +77,8 @@ impl Component for Menu {
                     }
                 }
             });
-        }
+            String::new()
+        });
         _ctx.link().send_future(async move {
             match get_request::<Vec<GameListEntry>>(
                 &format!("{}/active_game_links", SITE_LINK).as_str(),
@@ -109,7 +112,7 @@ impl Component for Menu {
                     .set_item(
                         "day_setting",
                         if self.client_window.day {
-                            "true"
+                            "day"
                         } else {
                             "night"
                         },
@@ -151,20 +154,20 @@ impl Component for Menu {
                 });
             }
             Self::Message::ReceivedId(player_id) => {
-                // web_log(format!("battleship: new player_id: {}", player_id));
-                self.client_window.player_id_tag = Some(format!("player_no.{}", player_id.0));
+                self.client_window.player_id_tag = Some(player_id.0);
                 self.client_window
                     .local_storage
                     .set_item(
-                        "player_id",
+                        "player_id_tag",
                         &self.client_window.player_id_tag.clone().unwrap(),
                     )
                     .unwrap();
-                self.client_window.player_id_key = Some(format!("{:?}", player_id.1));
+                self.client_window.player_id_key =
+                    Some(player_id.1);
                 self.client_window
                     .local_storage
                     .set_item(
-                        "player_key",
+                        "player_id_key",
                         &self.client_window.player_id_key.clone().unwrap(),
                     )
                     .unwrap();
@@ -263,7 +266,7 @@ impl Menu {
                                     }
                                 } else {
                                     html! {
-                                        <p class={"font"}>{ "Player Id Tag Loading ..." }</p>
+                                        <p class={"font"}>{ "Error in Initializing Player Id" }</p>
                                     }
                                 }
                             }
