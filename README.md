@@ -40,6 +40,10 @@ This project started-out as a portfolio project and exploration of what full-sta
 	- [ ] Documentation
 	- [ ] Initialize Changelog
 	- [ ] Update License
+- [ ] Additional Functionality
+	- [ ] Configure Github rust code action
+	- [ ] Test module
+	- [ ] Bench module
 - [ ] Optimize Code
 
 ### Additional TODO:
