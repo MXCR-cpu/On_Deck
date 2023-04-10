@@ -2,11 +2,11 @@ use crate::position::{FiredState, Position};
 use crate::ship::{Ship, ShipSet};
 use serde::{Deserialize, Serialize};
 
-type BoardTop = Vec<Vec<Position>>;
+pub type PositionVectors = Vec<Vec<Position>>;
 
 #[derive(Serialize, Deserialize)]
 pub struct Board {
-    pub board: BoardTop,
+    pub board: PositionVectors,
     ship_set: Vec<Vec<Ship>>,
 }
 
@@ -18,14 +18,14 @@ impl Board {
         }
     }
 
-    pub fn initialize_board(players: usize) -> BoardTop {
+    pub fn initialize_board(players: usize) -> PositionVectors {
         (0..10)
             .map(|index| {
                 (0..10)
                     .map(|jndex| Position::new(index, jndex, None, players).unwrap())
                     .collect::<Vec<Position>>()
             })
-            .collect::<BoardTop>()
+            .collect::<PositionVectors>()
     }
 
     pub fn empty() -> Self {
@@ -35,7 +35,7 @@ impl Board {
         }
     }
 
-    pub fn fire(&self, lat: usize, lon: usize, to: usize) -> Result<BoardTop, String> {
+    pub fn fire(&self, lat: usize, lon: usize, to: usize) -> Result<PositionVectors, String> {
         let mut new_fired_state: Vec<FiredState> = self.board[lat][lon].get_fired_state();
         if to <= new_fired_state.len() as usize {
             return Err(format!(

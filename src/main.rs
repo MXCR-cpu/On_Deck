@@ -199,7 +199,7 @@ async fn get_game_state(
         .await
         .unwrap();
     match json_database_get_simple(
-        &vec![format!("game_{}", game_id).as_str(), ".boards"],
+        &vec![format!("game_{}", game_id).as_str(), ".boards.board"],
         &mut rds,
     )
     .await

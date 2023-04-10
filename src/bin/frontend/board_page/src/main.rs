@@ -1,6 +1,6 @@
 use ecies::encrypt;
 use interact::site::SITE_LINK;
-use mechanics::board::Board;
+use mechanics::board::PositionVectors;
 use mechanics::position::FirePosition;
 use mechanics::position::FiredState;
 use regex::Regex;
@@ -17,7 +17,7 @@ use yew::prelude::*;
 
 struct ClientGame {
     client_window: ClientWindow,
-    boards: Board,
+    boards: PositionVectors,
     challenge: String,
     game_number: u32,
 }
@@ -28,7 +28,6 @@ enum ClientGameMsg {
     NotFired,
     NotReceived,
     UpdateBoardGame((String, String)),
-    Sent,
 }
 
 impl Component for ClientGame {
@@ -43,44 +42,11 @@ impl Component for ClientGame {
                 panic!()
             }
         };
-        let game_number: u32 = match Regex::new(r"\d+").unwrap().find(
-            Regex::new(r"game/\d+")
-                .unwrap()
-                .find(&client_window.window.location().href().unwrap())
-                .unwrap()
-                .as_str(),
-        ) {
-            Some(result) => match result.as_str().parse::<u32>() {
-                Ok(result) => result,
-                Err(error) => {
-                    web_sys::console::log_1(
-                        &format!("board_page/src/main.rs: create(): Could not parse &str into u32; \n\t{}", error).into()
-                    );
-                    panic!()
-                }
-            },
-            None => {
-                web_sys::console::log_1(
-                        &format!("board_page/src/main.rs: create(): Regex did not find any matching patterns for game_id within the url").into());
-                panic!()
-            }
-        };
-        _ctx.link().send_future(async move {
-            match get_request::<(String, String)>(format!("{}/game/{}", SITE_LINK, game_number).as_str()).await
-            {
-                Ok(result) => Self::Message::UpdateBoardGame(result),
-                Err(error) => {
-                    web_sys::console::log_1(
-                        &JsValue::from(
-                            format!("board_page/src/main.rs: create(): Could not receive active game link update; \n\t{}", error))
-                    );
-                    Self::Message::NotReceived
-                }
-            }
-        });
+        let game_number: u32 = Self::retreive_game_number(&client_window);
+        Self::send_update_request(_ctx, game_number, 0);
         Self {
             client_window,
-            boards: Board::empty(),
+            boards: Vec::new(),
             challenge: "".to_string(),
             game_number,
         }
@@ -119,27 +85,7 @@ impl Component for ClientGame {
             Self::Message::UpdateBoardGame((challenge, game_state)) => {
                 self.boards = serde_json::from_str(&game_state).unwrap();
                 self.challenge = challenge;
-                _ctx.link().send_message(Self::Message::Sent);
-            }
-            Self::Message::Sent => {
-                _ctx.link().send_future(async move {
-                    sleep(Duration::from_secs(5)).await;
-                        match get_request::<(String, String)>(
-                            format!("{}/game/{}", SITE_LINK, game_number).as_str(),
-                        )
-                        .await {
-                            Ok(result) => Self::Message::UpdateBoardGame(result),
-                            Err(error) => {
-                                web_sys::console::log_1(
-                                    &format!(
-                                        "board_page/src/main.rs: update(): Could not receive active game link update; \n\t{}",
-                                        error
-                                    ).into()
-                                );
-                                Self::Message::NotReceived
-                            }
-                        }
-                });
+                Self::send_update_request(_ctx, game_number, 5);
             }
             _ => {}
         }
@@ -157,7 +103,7 @@ impl Component for ClientGame {
             .into_iter()
             .flatten()
             .collect::<Vec<(usize, usize)>>();
-        let number_of_players: &usize = &self.boards.board[0][0].fired_state.len();
+        let number_of_players: &usize = &self.boards[0][0].fired_state.len();
         let onclick = |index: usize, jndex: usize, to: usize| {
             ctx.link()
                 .callback(move |_| Self::Message::Fire(index, jndex, to))
@@ -181,7 +127,7 @@ impl Component for ClientGame {
                                     indecies.clone()
                                         .into_iter()
                                         .map(|(x_pos, y_pos): (usize, usize)| {
-                                            match self.boards.board[x_pos][y_pos].fired_state[index] {
+                                            match self.boards[x_pos][y_pos].fired_state[index] {
                                                 FiredState::Untouched => {
                                                     html! {
                                                         <button class={map_button_class("untouched", x_pos, y_pos)} onclick={onclick(x_pos, y_pos, index)}></button>
@@ -218,6 +164,50 @@ impl Component for ClientGame {
                 </div>
             </div>
         }
+    }
+}
+
+impl ClientGame {
+    fn retreive_game_number(client_window: &ClientWindow) -> u32 {
+        match Regex::new(r"\d+").unwrap().find(
+            Regex::new(r"game/\d+")
+                .unwrap()
+                .find(&client_window.window.location().href().unwrap())
+                .unwrap()
+                .as_str(),
+        ) {
+            Some(result) => match result.as_str().parse::<u32>() {
+                Ok(result) => result,
+                Err(error) => {
+                    web_sys::console::log_1(
+                        &format!("board_page/src/main.rs: create(): Could not parse &str into u32; \n\t{}", error).into()
+                    );
+                    panic!()
+                }
+            },
+            None => {
+                web_sys::console::log_1(
+                        &format!("board_page/src/main.rs: create(): Regex did not find any matching patterns for game_id within the url").into());
+                panic!()
+            }
+        }
+    }
+
+    fn send_update_request(_ctx: &Context<Self>, game_number: u32, waiting_time: u64) {
+        _ctx.link().send_future(async move {
+            sleep(Duration::from_secs(waiting_time)).await;
+            match get_request::<(String, String)>(format!("{}/game/{}", SITE_LINK, game_number).as_str()).await
+            {
+                Ok(result) => ClientGameMsg::UpdateBoardGame(result),
+                Err(error) => {
+                    web_sys::console::log_1(
+                        &JsValue::from(
+                            format!("board_page/src/main.rs: send_update_request(): Could not receive active game link update; \n\t{}", error))
+                    );
+                    ClientGameMsg::NotReceived
+                }
+            }
+        });
     }
 }
 
