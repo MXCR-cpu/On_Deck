@@ -11,6 +11,7 @@ use battleship::start;
 use database::json_database_get_simple;
 use ecies::{decrypt, utils::generate_keypair};
 use interact::link::{GameList, GameListEntry};
+use interact::site::SITE_LINK;
 use mechanics::game::Game;
 use mechanics::position::FirePosition;
 use rand::{distributions::Alphanumeric, Rng};
@@ -48,22 +49,22 @@ async fn extra_files(path: PathBuf) -> Result<NamedFile, NotFound<String>> {
 
 // On Startup
 #[get("/")]
-async fn intercept_start(_rds: Connection<RedisDatabase>) -> Redirect {
-    Redirect::to(uri!(main_page()))
+async fn intercept_start() -> Redirect {
+    Redirect::to(format!("{SITE_LINK}/main"))
 }
 
 //TODO: Perhaps create a unique hashing function that allows the player_id to
 //be securely hidden from the client side
 #[get("/get_player_id")]
 async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(String, String)> {
-    let _res: u32 = database_get(&"player_id_count", &mut rds)
+    let res: u32 = database_get(&"player_id_count", &mut rds)
         .await
         .unwrap_or("0".to_string())
         .parse::<u32>()
         .unwrap();
-    let player_index: String = format!("player_{}", _res);
+    let player_index: String = format!("player_{res}");
     database_set(
-        &vec!["player_id_count", (_res + 1).to_string().as_str()],
+        &vec!["player_id_count", (res + 1).to_string().as_str()],
         &mut rds,
     )
     .await
@@ -75,7 +76,12 @@ async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(String, Stri
     )
     .await
     .unwrap();
-    Json((player_index, std::str::from_utf8(&player_keys.encryption_key).unwrap().to_string()))
+    Json((
+        player_index,
+        std::str::from_utf8(&player_keys.encryption_key)
+            .unwrap()
+            .to_string(),
+    ))
 }
 
 #[post("/start", format = "json", data = "<players_obj>")]
@@ -138,7 +144,7 @@ async fn process_game_request(
     game_id: u32,
     player_id: String,
 ) -> Result<NamedFile, NotFound<String>> {
-    let game_tag: String = format!("game_{}", game_id);
+    let game_tag: String = format!("game_{game_id}");
     let number_of_players: usize =
         json_database_get::<_, usize>(&vec![game_tag.as_str(), ".number_of_players"], &mut rds)
             .await
@@ -148,7 +154,7 @@ async fn process_game_request(
             .await
             .unwrap();
     if current_players.len() == number_of_players || current_players.contains(&player_id) {
-        return return_file(format!("{}dist/{}", BOARD_DIR, "index.html")).await;
+        return return_file(format!("{BOARD_DIR}dist/index.html")).await;
     }
     current_players.push(player_id);
     json_database_set::<Vec<String>>(
@@ -169,7 +175,7 @@ async fn process_game_request(
     .await
     .unwrap();
     if current_players.len() < number_of_players {
-        return return_file(format!("{}dist/{}", BOARD_DIR, "index.html")).await;
+        return return_file(format!("{BOARD_DIR}dist/index.html")).await;
     }
     // Kick-off the game and create challenges
     if current_players.len() == number_of_players {
@@ -186,30 +192,63 @@ async fn process_game_request(
         .await
         .unwrap();
     }
-    return_file(format!("{}dist/{}", BOARD_DIR, "index.html")).await
+    return_file(format!("{BOARD_DIR}dist/index.html")).await
 }
 
-#[get("/<game_id>")]
+#[get("/<game_id>/<player_id>/<access_key>")]
 async fn get_game_state(
     mut rds: Connection<RedisDatabase>,
     game_id: u32,
-) -> Json<(String, String)> {
-    let game_challenge: String = 
-        json_database_get(&vec![format!("game_{}", game_id).as_str(), ".challenge"], &mut rds)
-        .await
-        .unwrap();
-    match json_database_get_simple(
-        &vec![format!("game_{}", game_id).as_str(), ".boards.board"],
+    player_id: String,
+    access_key: String,
+) -> Json<(String, String, String)> {
+    let vector_positions: String = match json_database_get_simple(
+        &vec![format!("game_{game_id}").as_str(), ".boards.board"],
         &mut rds,
     )
     .await
     {
-        Ok(boards) => Json((game_challenge, boards)),
+        Ok(boards) => boards,
         Err(error) => {
             println!("{}", error);
-            Json(("".to_string(),"".to_string()))
+            "".to_string()
         }
+    };
+    let player_tags: Vec<String> = json_database_get(
+        &vec![format!("game_{game_id}").as_str(), ".player_tags"],
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    if !player_tags.contains(&player_id) {
+        return Json(("".to_string(), "".to_string(), vector_positions));
     }
+    let game_challenge: String = json_database_get(
+        &vec![format!("game_{game_id}").as_str(), ".challenge"],
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    let keys: PlayerKeys = json_database_get(&vec![player_id.as_str()], &mut rds)
+        .await
+        .unwrap();
+    if !std::str::from_utf8(&decrypt(&keys.decryption_key, access_key.as_bytes()).unwrap())
+        .unwrap()
+        .eq("Request")
+    {
+        return Json((game_challenge, "".to_string(), vector_positions));
+    }
+    let player_index: usize = player_tags.iter().position(|x| player_id.eq(x)).unwrap();
+    let ship_placements: String = json_database_get_simple(
+        &vec![
+            format!("game_{game_id}").as_str(),
+            format!(".boards.ship_set[{player_index}]").as_str(),
+        ],
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    Json((game_challenge, ship_placements, vector_positions))
 }
 
 // Board Page Functions
@@ -221,7 +260,7 @@ async fn fire(
     fire_position_json: Json<FirePosition>,
     game_id: u32,
 ) -> Json<String> {
-    let game_tag: String = format!("game_{}", game_id);
+    let game_tag: String = format!("game_{game_id}");
     let fire_position: FirePosition = fire_position_json.into_inner();
     let active_game_challenge: String =
         json_database_get::<_, String>(&vec![game_tag.as_str(), ".challenge"], &mut rds)
@@ -253,18 +292,18 @@ async fn fire(
 
 #[get("/<path..>")]
 async fn board_files(path: PathBuf) -> Result<NamedFile, NotFound<String>> {
-    return return_file(format!("{}dist/{}", BOARD_DIR, path.display())).await;
+    return return_file(format!("{BOARD_DIR}dist/{}", path.display())).await;
 }
 
 // Main Page Functions
 #[get("/")]
 async fn main_page() -> Result<NamedFile, NotFound<String>> {
-    return_file(format!("{}dist/{}", MAIN_DIR, "index.html")).await
+    return_file(format!("{MAIN_DIR}dist/index.html")).await
 }
 
 #[get("/<path..>")]
 async fn main_files(path: PathBuf) -> Result<NamedFile, NotFound<String>> {
-    return return_file(format!("{}dist/{}", MAIN_DIR, path.display())).await;
+    return return_file(format!("{MAIN_DIR}dist/{}", path.display())).await;
 }
 
 #[launch]
