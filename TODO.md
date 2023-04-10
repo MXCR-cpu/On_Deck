@@ -29,9 +29,9 @@
 		- [ ] Clouds
 - [ ] Configure usability for smaller screens
 - [ ] Additional Paper Logs
-	- [ ] Documentation
-	- [ ] Initialize Changelog
-	- [ ] Update License
+	- [ ] DOCUMENTATION
+	- [ ] CHANGELOG
+	- [ ] LICENSE
 - [ ] Additional Functionality
 	- [ ] Configure Github rust code action
 	- [ ] Test module
