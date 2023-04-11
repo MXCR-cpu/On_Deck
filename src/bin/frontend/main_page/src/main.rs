@@ -57,20 +57,21 @@ impl Component for Menu {
         let client_window: ClientWindow = match ClientWindow::new() {
             Ok(window) => window,
             Err(error) => {
-                web_sys::console::log_1(&JsValue::from(error));
+                web_sys::console::log_1(&JsValue::from(format!(
+                    "main_page/src/main.rs: create(): Failed to create ClientWindow {error};"
+                )));
                 panic!()
             }
         };
         client_window.player_id_tag.clone().unwrap_or_else(|| {
             web_sys::console::log_1(&"board_page: create(): Getting new player_id".into());
             _ctx.link().send_future(async move {
-                match get_request::<(String, String)>(&format!("{}/get_player_id", SITE_LINK))
-                    .await
+                match get_request::<(String, String)>(&format!("{SITE_LINK}/get_player_id")).await
                 {
                     Ok(result) => Self::Message::ReceivedId(result),
                     Err(error) => {
                         web_sys::console::log_2(
-                            &"board_page: create(): get_request(), 112;".into(),
+                            &"board_page/src/main.rs: create(): get_request(): ".into(),
                             &JsValue::from(error),
                         );
                         Self::Message::NotReceived
@@ -162,8 +163,7 @@ impl Component for Menu {
                         &self.client_window.player_id_tag.clone().unwrap(),
                     )
                     .unwrap();
-                self.client_window.player_id_key =
-                    Some(player_id.1);
+                self.client_window.player_id_key = Some(player_id.1);
                 self.client_window
                     .local_storage
                     .set_item(

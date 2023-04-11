@@ -31,7 +31,7 @@ pub async fn database_set<T: ToRedisArgs>(
     rds: &mut Connection<RedisDatabase>,
 ) -> Result<(), String> {
     match redis::cmd("SET")
-        .arg(&args)
+        .arg(args)
         .query_async::<_, ()>(&mut **rds)
         .await
     {
