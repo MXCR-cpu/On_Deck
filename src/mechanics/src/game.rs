@@ -3,11 +3,11 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Game {
-    boards: Board,
-    number_of_players: usize,
-    player_tags: Vec<String>,
-    challenge: String,
-    game_number: u64,
+    pub boards: Board,
+    pub number_of_players: usize,
+    pub player_tags: Vec<String>,
+    pub challenge: String,
+    pub game_number: u64,
 }
 
 impl Game {

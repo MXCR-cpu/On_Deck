@@ -9,7 +9,7 @@ use crate::database::{
 use battleship::keys::PlayerKeys;
 use battleship::start;
 use database::json_database_get_simple;
-use ecies::{decrypt, utils::generate_keypair};
+use ecies::decrypt;
 use interact::link::{GameList, GameListEntry};
 use interact::site::SITE_LINK;
 use mechanics::game::Game;
@@ -69,19 +69,12 @@ async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(String, Stri
     )
     .await
     .unwrap();
-    let player_keys: PlayerKeys = PlayerKeys::new(generate_keypair());
-    database_set(
-        &vec![&player_index, &serde_json::to_string(&player_keys).unwrap()],
-        &mut rds,
-    )
-    .await
-    .unwrap();
-    Json((
-        player_index,
-        std::str::from_utf8(&player_keys.encryption_key)
-            .unwrap()
-            .to_string(),
-    ))
+    let player_keys: PlayerKeys = PlayerKeys::new();
+    player_keys.log(&player_index);
+    json_database_set(&vec![player_index.as_str(), "."], &player_keys, &mut rds)
+        .await
+        .unwrap();
+    Json((player_index, player_keys.public_key_string()))
 }
 
 #[post("/start", format = "json", data = "<players_obj>")]
@@ -202,43 +195,31 @@ async fn get_game_state(
     player_id: String,
     access_key: String,
 ) -> Json<(String, String, String)> {
-    let vector_positions: String = match json_database_get_simple(
-        &vec![format!("game_{game_id}").as_str(), ".boards.board"],
-        &mut rds,
-    )
-    .await
+    let game_state: Game =
+        match json_database_get(&vec![format!("game_{game_id}").as_str(), "."], &mut rds).await {
+            Ok(boards) => boards,
+            Err(error) => {
+                println!("{}", error);
+                panic!()
+            }
+        };
+    let vector_state_string: String = serde_json::to_string(&game_state.boards.board).unwrap();
+    if !game_state.player_tags.contains(&player_id)
+        // && game_state.player_tags.len() == game_state.number_of_players
     {
-        Ok(boards) => boards,
-        Err(error) => {
-            println!("{}", error);
-            "".to_string()
-        }
-    };
-    let player_tags: Vec<String> = json_database_get(
-        &vec![format!("game_{game_id}").as_str(), ".player_tags"],
-        &mut rds,
-    )
-    .await
-    .unwrap();
-    if !player_tags.contains(&player_id) {
-        return Json(("".to_string(), "".to_string(), vector_positions));
+        return Json(("".to_string(), "".to_string(), vector_state_string));
     }
-    let game_challenge: String = json_database_get(
-        &vec![format!("game_{game_id}").as_str(), ".challenge"],
-        &mut rds,
-    )
-    .await
-    .unwrap();
-    let keys: PlayerKeys = json_database_get(&vec![player_id.as_str()], &mut rds)
+    let key: String = json_database_get(&vec![player_id.as_str(), ".info_key"], &mut rds)
         .await
         .unwrap();
-    if !std::str::from_utf8(&decrypt(&keys.decryption_key, access_key.as_bytes()).unwrap())
-        .unwrap()
-        .eq("Request")
-    {
-        return Json((game_challenge, "".to_string(), vector_positions));
+    if !key.eq(&access_key) {
+        return Json((game_state.challenge, "".to_string(), vector_state_string));
     }
-    let player_index: usize = player_tags.iter().position(|x| player_id.eq(x)).unwrap();
+    let player_index: usize = game_state
+        .player_tags
+        .iter()
+        .position(|x| player_id.eq(x))
+        .unwrap();
     let ship_placements: String = json_database_get_simple(
         &vec![
             format!("game_{game_id}").as_str(),
@@ -248,7 +229,7 @@ async fn get_game_state(
     )
     .await
     .unwrap();
-    Json((game_challenge, ship_placements, vector_positions))
+    Json((game_state.challenge, ship_placements, vector_state_string))
 }
 
 // Board Page Functions
