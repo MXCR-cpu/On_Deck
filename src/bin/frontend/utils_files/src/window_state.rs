@@ -78,4 +78,8 @@ impl ClientWindow {
             )),
         }
     }
+
+    pub fn clear_storage(&self) {
+        self.local_storage.clear().unwrap();
+    }
 }

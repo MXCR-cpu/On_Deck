@@ -16,11 +16,7 @@ use yew::classes;
 use yew::platform::time::sleep;
 use yew::prelude::*;
 
-// #[wasm_bindgen]
-// extern "C" {
-//     pub fn btoa(data_string: &str) -> String;
-//     pub fn atob(data_vector: &str) -> String;
-// }
+const CONTINUAL_REQUEST: bool = false;
 
 struct ClientGame {
     client_window: ClientWindow,
@@ -56,11 +52,6 @@ impl Component for ClientGame {
         let game_number: u32 = Self::retreive_game_number(&client_window);
         let encryption_key: Vec<u8> =
             serde_json::from_str::<Vec<u8>>(&client_window.player_id_key.clone().unwrap()).unwrap();
-        // web_sys::console::log_1(&JsValue::from(format!(
-        //     "Key Vector (length {}): {:?}",
-        //     encryption_key.len(),
-        //     encryption_key
-        // )));
         let access_message: String = encrypt(
                     &encryption_key,
                     String::from("Request").as_bytes(),
@@ -136,7 +127,9 @@ impl Component for ClientGame {
                 } else {
                     Some(serde_json::from_str::<PositionVectors>(&game_state).unwrap())
                 };
-                self.send_update_request(_ctx, 5);
+                if CONTINUAL_REQUEST {
+                    self.send_update_request(_ctx, 5);
+                }
             }
             _ => {}
         }
@@ -275,6 +268,13 @@ impl ClientGame {
                 }
             }
         });
+    }
+}
+
+impl Drop for ClientGame {
+    fn drop(&mut self) {
+        web_sys::console::log_1(&JsValue::from(format!("Dropping ClientGame")));
+        self.client_window.clear_storage();
     }
 }
 
