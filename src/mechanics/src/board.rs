@@ -7,7 +7,7 @@ pub type PositionVectors = Vec<Vec<Position>>;
 #[derive(Serialize, Deserialize)]
 pub struct Board {
     pub board: PositionVectors,
-    ship_set: Vec<Vec<Ship>>,
+    pub ship_set: Vec<Vec<Ship>>,
 }
 
 impl Board {
