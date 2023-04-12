@@ -138,53 +138,52 @@ async fn process_game_request(
     player_id: String,
 ) -> Result<NamedFile, NotFound<String>> {
     let game_tag: String = format!("game_{game_id}");
-    let number_of_players: usize =
-        json_database_get::<_, usize>(&vec![game_tag.as_str(), ".number_of_players"], &mut rds)
-            .await
-            .unwrap();
-    let mut current_players: Vec<String> =
-        json_database_get::<_, Vec<String>>(&vec![game_tag.as_str(), ".player_tags"], &mut rds)
-            .await
-            .unwrap();
-    if current_players.len() == number_of_players || current_players.contains(&player_id) {
+    let mut game_state: Game =
+        match json_database_get(&vec![format!("game_{game_id}").as_str(), "."], &mut rds).await {
+            Ok(boards) => boards,
+            Err(error) => {
+                println!("{}", error);
+                panic!()
+            }
+        };
+
+    if game_state.player_tags.len() == game_state.number_of_players || game_state.player_tags.contains(&player_id) {
         return return_file(format!("{BOARD_DIR}dist/index.html")).await;
     }
-    current_players.push(player_id);
-    json_database_set::<Vec<String>>(
-        &[game_tag.as_str(), ".player_tags"],
-        &current_players,
-        &mut rds,
-    )
-    .await
-    .unwrap();
+    game_state.player_tags.push(player_id);
     json_database_set::<Vec<String>>(
         &[
             "current_games",
             &format!(".[{}].active_player_names", game_id - 1),
         ],
-        &current_players,
+        &game_state.player_tags,
         &mut rds,
     )
     .await
     .unwrap();
-    if current_players.len() < number_of_players {
+    if game_state.player_tags.len() < game_state.number_of_players {
+        json_database_set::<Game>(
+            &vec![game_tag.as_str(), "."],
+            &game_state,
+            &mut rds,
+            )
+            .await
+            .unwrap();
         return return_file(format!("{BOARD_DIR}dist/index.html")).await;
     }
-    // Kick-off the game and create challenges
-    if current_players.len() == number_of_players {
-        let random_challenge: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(10)
-            .map(char::from)
-            .collect::<String>();
-        json_database_set::<String>(
-            &[game_tag.as_str(), ".challenge"],
-            &random_challenge,
-            &mut rds,
+    // Kick-off the game by creating firing create challenge
+    game_state.challenge = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(10)
+        .map(char::from)
+        .collect::<String>();
+    json_database_set::<Game>(
+        &vec![game_tag.as_str(), "."],
+        &game_state,
+        &mut rds,
         )
         .await
         .unwrap();
-    }
     return_file(format!("{BOARD_DIR}dist/index.html")).await
 }
 
@@ -205,7 +204,7 @@ async fn get_game_state(
         };
     let vector_state_string: String = serde_json::to_string(&game_state.boards.board).unwrap();
     if !game_state.player_tags.contains(&player_id)
-        // && game_state.player_tags.len() == game_state.number_of_players
+        && game_state.player_tags.len() == game_state.number_of_players
     {
         return Json(("".to_string(), "".to_string(), vector_state_string));
     }
