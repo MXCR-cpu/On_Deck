@@ -12,12 +12,17 @@
 	--sky_color: #00B5E2;
 	--normal_sky_color: #00B5E2;
 	--night_sky_color: #13294B;
-	--day_ocean_color: #0065C4;
+	--normal_ocean_color: #0065C4;
 	--night_ocean_color: #08101c;
 	--standard_radius: 20px;
 	--standard_padding: 10px;
 	--gap: 50px;
 	--panel_spacing: 30px;
+}
+
+html {
+	height: 100%;
+	width: 100%l
 }
 
 .font {
@@ -199,13 +204,19 @@
 	position: absolute;
 	left: 50%;
 	height: 100%;
-	width: 75%;
+	width: 85%;
 	padding: var(--battlefield_padding);
 	padding-bottom: var(--battlefield_padding);
 	transform: translate(-50%, 0%);
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
+	overflow: scroll;
+	scrollbar-width: none;
+}
+
+.battlefield::-webkit-scrollbar {
+	display: none;
 }
 
 .board {
