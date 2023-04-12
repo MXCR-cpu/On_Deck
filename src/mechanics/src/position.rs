@@ -76,7 +76,7 @@ impl Position {
             ));
         }
         Ok(Self {
-            fired_state: shots.unwrap_or(vec![FiredState::Untouched; size]),
+            fired_state: shots.unwrap_or(vec![FiredState::Empty; size]),
         })
     }
 
