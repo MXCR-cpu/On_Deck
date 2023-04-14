@@ -326,6 +326,7 @@ async fn fire(
                 panic!()
             }
         };
+    println!("branch 1: {:b}", game_state.shot_list);
     if (game_state.shot_list & (1 << fire_position.from)) != 0 {
         return Json(false);
     }
@@ -338,6 +339,7 @@ async fn fire(
     )
     .await
     .unwrap();
+    println!("branch 2: {:b}", game_state.shot_list);
     if !game_state.challenge.eq(&std::str::from_utf8(
         &decrypt(&decrypt_key, &fire_position.challenge).unwrap(),
     )
@@ -345,15 +347,15 @@ async fn fire(
     {
         return Json(false);
     }
-    game_state.shot_list = game_state.shot_list & (1 << fire_position.from);
-    format!("{:b}", game_state.shot_list);
+    game_state.shot_list = game_state.shot_list | (1 << fire_position.from);
+    println!("branch 3: {:b}", game_state.shot_list);
     game_state.boards.positions = game_state
         .boards
         .fire(fire_position.lon, fire_position.lat, fire_position.to)
         .unwrap();
     if game_state.shot_list
         ^ (2_u32
-            .checked_pow(game_state.number_of_players as u32)
+            .checked_pow(game_state.number_of_players  as u32)
             .unwrap()
             - 1)
         == 0
@@ -366,6 +368,7 @@ async fn fire(
         .unwrap();
         game_state.shot_list = 0;
     }
+    println!("branch 4: {:b}", game_state.shot_list);
     json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
         .await
         .unwrap();
