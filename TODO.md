@@ -13,8 +13,11 @@
     - [ ] Apply board names component
 	- [ ] Add Ship Placement Prompt
 		- [ ] Create a ready stage where everyone can place their ships
+- [ ] Fix Event Stream fixture
+    - Open process needs to give everyone enough time to run but restrict each user to roughly
+    one update request at a time
 - [ ] Salvo based progression
-	- [ ] New salvo round when all players have fired
+	- [X] New salvo round when all players have fired
 	- [ ] End sequence (win / loss)
 - [ ] Settings Panel
 	- [ ] Flesh out
