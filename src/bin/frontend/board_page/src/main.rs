@@ -7,6 +7,7 @@ use mechanics::position::FiredState;
 use mechanics::ship::Ship;
 use regex::Regex;
 use std::time::Duration;
+use utils_files::event_source_state::EventSourceState;
 use utils_files::request::fire_on_position;
 use utils_files::request::get_request;
 use utils_files::sky::Sky;
@@ -16,15 +17,19 @@ use yew::classes;
 use yew::platform::time::sleep;
 use yew::prelude::*;
 
-const CONTINUAL_REQUEST: bool = false;
+// const CONTINUAL_REQUEST: bool = true;
 
 struct ClientGame {
     client_window: ClientWindow,
+    event_source: EventSourceState,
     boards: Option<PositionVectors>,
     ships: Option<Vec<Ship>>,
     access_message: String,
     challenge: Option<String>,
+    player_titles: Option<Vec<String>>,
+    player_index: Option<usize>,
     game_number: u32,
+    round: u32,
 }
 
 enum ClientGameMsg {
@@ -32,7 +37,9 @@ enum ClientGameMsg {
     Fired,
     NotFired,
     NotReceived,
-    UpdateBoardGame((String, String, String)),
+    AwaitUpdate,
+    UpdateBoardGame((String, String, String, String)),
+    EndSource,
 }
 
 impl Component for ClientGame {
@@ -66,16 +73,31 @@ impl Component for ClientGame {
                     panic!()
                 })
                 .into_iter()
-                .map(|element: u8| format!("{:x}", element))
+                .map(|element: u8| format!("{:02x}", element))
                 .collect::<Vec<String>>()
                 .join("");
+        let callback_update = _ctx
+            .link()
+            .callback(move |_: ()| Self::Message::AwaitUpdate);
+        let callback_end = _ctx.link().callback(move |_: ()| Self::Message::EndSource);
+        callback_update.emit(());
+        let event_source: EventSourceState = EventSourceState::new(
+            &format!("{SITE_LINK}/game/{game_number}/game_stream"),
+            None,
+            move |_| callback_update.emit(()),
+            move |_| callback_end.emit(()),
+        );
         let client_game: Self = Self {
             client_window,
+            event_source,
             boards: None,
             ships: None,
             access_message,
             challenge: None,
+            player_titles: None,
+            player_index: None,
             game_number,
+            round: 0,
         };
         client_game.send_update_request(&_ctx, 0);
         client_game
@@ -86,14 +108,17 @@ impl Component for ClientGame {
         match msg {
             Self::Message::Fire(x_pos, y_pos, to) => {
                 let message_bytes: Vec<u8> = encrypt(
-                    self.client_window.player_id_key.clone().unwrap().as_bytes(),
-                    &self.challenge.clone().unwrap().as_bytes().to_vec(),
+                    &serde_json::from_str::<Vec<u8>>(
+                        &self.client_window.player_id_key.clone().unwrap(),
+                    )
+                    .unwrap(),
+                    &self.challenge.clone().unwrap().as_bytes(),
                 )
                 .unwrap();
-                let sent_player_tag: String = self.client_window.player_id_tag.clone().unwrap();
+                let player_index: usize = self.player_index.clone().unwrap();
                 _ctx.link().send_future(async move {
                     match fire_on_position::<FirePosition>(
-                        FirePosition::new(message_bytes, sent_player_tag, x_pos, y_pos, to),
+                        FirePosition::new(message_bytes, player_index, to, x_pos, y_pos),
                         game_number,
                         )
                         .await
@@ -111,11 +136,42 @@ impl Component for ClientGame {
                         }
                 });
             }
-            Self::Message::UpdateBoardGame((challenge, ship_positions, game_state)) => {
+            Self::Message::AwaitUpdate => {
+                self.send_update_request(_ctx, 5);
+            }
+            Self::Message::UpdateBoardGame((
+                challenge,
+                player_titles,
+                ship_positions,
+                game_state,
+            )) => {
                 self.challenge = if challenge.is_empty() {
                     None
                 } else {
+                    if !self
+                        .challenge
+                        .clone()
+                        .unwrap_or("".to_string())
+                        .eq(&challenge)
+                    {
+                        self.round += 1;
+                    }
                     Some(challenge.to_string())
+                };
+                self.player_titles = if player_titles.is_empty() {
+                    self.player_index = None;
+                    None
+                } else {
+                    let player_id: String = self.client_window.player_id_tag.clone().unwrap();
+                    let player_titles_vec: Vec<String> =
+                        serde_json::from_str(&player_titles).unwrap();
+                    self.player_index = Some(
+                        player_titles_vec
+                            .iter()
+                            .position(|x| player_id.eq(x))
+                            .unwrap_or(0),
+                    );
+                    Some(player_titles_vec)
                 };
                 self.ships = if ship_positions.is_empty() {
                     None
@@ -127,9 +183,9 @@ impl Component for ClientGame {
                 } else {
                     Some(serde_json::from_str::<PositionVectors>(&game_state).unwrap())
                 };
-                if CONTINUAL_REQUEST {
-                    self.send_update_request(_ctx, 5);
-                }
+            }
+            Self::Message::EndSource => {
+                self.event_source.close_connection();
             }
             _ => {}
         }
@@ -164,56 +220,78 @@ impl Component for ClientGame {
                 format!("button_col_{}", index)
             )
         };
+        // <img class={"button_row_7"} src={format!("{}/extra_files/ship_battleship_day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
+        let player_titles_unwrapped: Vec<String> = self.player_titles.clone().unwrap_or(Vec::new());
+        let player_index_unwrapped: usize = self.player_index.clone().unwrap_or(0);
         html! {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
                 if !self.client_window.day {
                     <Sky max_stars={20} star_size={2} log={false} />
                 }
                 <div class={classes!("ocean_setting", if self.client_window.day { "ocean_day" } else { "ocean_night" })}>
+                    <div class={"round_heading"}>
+                        if self.round != 0 {
+                            <h2 class={classes!("round_title", "font")}>{ format!("Round {}", self.round) }</h2>
+                        } else {
+                            <h2 class={classes!("round_title", "font")}>{ "Game Not Yet Started" }</h2>
+                        }
+                    </div>
                     <div class={"battlefield"}>{
                         (0..number_of_players)
                             .into_iter()
                             .map(|index: usize| html! {
-                                <div class={"board"}>{
-                                    if let Some(board) = self.boards.clone() {
-                                        indecies.clone()
-                                            .into_iter()
-                                            .map(|(x_pos, y_pos): (usize, usize)| {
-                                                match board[x_pos][y_pos].fired_state[index] {
-                                                    FiredState::Untouched => {
-                                                        html! {
-                                                            <button class={map_button_class("untouched", x_pos, y_pos)} onclick={onclick(x_pos, y_pos, index)}></button>
+                                <div>
+                                    <div class={"board"}>{
+                                        if let Some(board) = self.boards.clone() {
+                                            indecies.clone()
+                                                .into_iter()
+                                                .map(|(x_pos, y_pos): (usize, usize)| {
+                                                    match board[x_pos][y_pos].fired_state[index] {
+                                                        FiredState::Untouched => {
+                                                            if index == player_index_unwrapped {
+                                                                return html! {
+                                                                    <button class={map_button_class("empty", x_pos, y_pos)} />
+                                                                };
+                                                            }
+                                                            html! {
+                                                                <button class={map_button_class("untouched", x_pos, y_pos)} onclick={onclick(x_pos, y_pos, index)} />
+                                                            }
+                                                        }
+                                                        FiredState::Miss => {
+                                                            html! {
+                                                                <button class={map_button_class("miss", x_pos, y_pos)} />
+                                                            }
+                                                        }
+                                                        FiredState::Hit => {
+                                                            html! {
+                                                                <button class={map_button_class("hit", x_pos, y_pos)} />
+                                                            }
+                                                        }
+                                                        FiredState::Empty => {
+                                                            html! {
+                                                                <button class={map_button_class("empty", x_pos, y_pos)} />
+                                                            }
+                                                        }
+                                                        FiredState::Ship => {
+                                                            html! {
+                                                                <button class={map_button_class("ship", x_pos, y_pos)} />
+                                                            }
                                                         }
                                                     }
-                                                    FiredState::Miss => {
-                                                        html! {
-                                                            <button class={map_button_class("miss", x_pos, y_pos)}></button>
-                                                        }
-                                                    }
-                                                    FiredState::Hit => {
-                                                        html! {
-                                                            <button class={map_button_class("hit", x_pos, y_pos)}></button>
-                                                        }
-                                                    }
-                                                    FiredState::Empty => {
-                                                        html! {
-                                                            <button class={map_button_class("empty", x_pos, y_pos)}></button>
-                                                        }
-                                                    }
-                                                    FiredState::Ship => {
-                                                        html! {
-                                                            <button class={map_button_class("ship", x_pos, y_pos)}></button>
-                                                        }
-                                                    }
-                                                }
-                                            })
-                                            .collect::<Html>()
-                                    } else {
-                                        html! {
-                                            <p>{ "boards are loading ..." }</p>
+                                                })
+                                                .collect::<Html>()
+                                        } else {
+                                            html! {
+                                                <p>{ "boards are loading ..." }</p>
+                                            }
                                         }
+                                    }</div>
+                                    if index < player_titles_unwrapped.len() {
+                                        <h3 class={classes!("font", "player_title")}>{ format!("{}", player_titles_unwrapped[index]) }</h3>
+                                    } else {
+                                        <h3 class={classes!("font", "player_title")}>{ "Empty" }</h3>
                                     }
-                                }</div>
+                                </div>
                             })
                             .collect::<Html>()
                     }
@@ -256,7 +334,7 @@ impl ClientGame {
         let access_message: String = self.access_message.clone();
         _ctx.link().send_future(async move {
             sleep(Duration::from_secs(waiting_time)).await;
-            match get_request::<(String, String, String)>(format!("{SITE_LINK}/game/{}/{}/{}", game_number, player_id, access_message).as_str()).await
+            match get_request::<(String, String, String, String)>(format!("{SITE_LINK}/game/{}/{}/{}", game_number, player_id, access_message).as_str()).await
             {
                 Ok(result) => ClientGameMsg::UpdateBoardGame(result),
                 Err(error) => {

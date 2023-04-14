@@ -5,7 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-interact = { path = "../../../interact"}
+interact = { path = "../../../interact" }
 utils_files = { path = "../utils_files" }
 getrandom = { version = "0.2", features = ["js"] }
 futures = "0.3.27"

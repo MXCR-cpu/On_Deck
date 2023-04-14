@@ -3,43 +3,28 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct FirePosition {
     pub challenge: Vec<u8>,
-    pub from_player: String,
-    lat: usize,
-    lon: usize,
-    target: usize,
+    pub from: usize,
+    pub to: usize,
+    pub lon: usize,
+    pub lat: usize,
 }
 
 impl FirePosition {
-    pub fn new(
-        challenge: Vec<u8>,
-        from_player: String,
-        lat: usize,
-        lon: usize,
-        target: usize,
-    ) -> Self {
+    pub fn new(challenge: Vec<u8>, from: usize, to: usize, lon: usize, lat: usize) -> Self {
         Self {
             challenge,
-            from_player,
-            lat,
+            from,
+            to,
             lon,
-            target,
+            lat,
         }
-    }
-    pub fn print(&self) -> String {
-        format!(
-            ".boards.board[{}][{}].fired_state[{}]",
-            self.lon, self.lat, self.target
-        )
-    }
-    pub fn get_challenge(&self) -> &Vec<u8> {
-        &self.challenge
     }
 }
 
 const SQUARE_SIDE: usize = 10;
 const PLAYERS: usize = 2;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub enum FiredState {
     Hit,
     Miss,
@@ -55,21 +40,21 @@ pub struct Position {
 
 impl Position {
     pub fn new(
-        lat: usize,
         lon: usize,
+        lat: usize,
         shots: Option<Vec<FiredState>>,
         size: usize,
     ) -> Result<Self, String> {
         if SQUARE_SIDE - 1 < lat {
             return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
+                "Position: {}: lat {} is greater than {}",
                 "lat",
                 lat,
                 SQUARE_SIDE - 1
             ));
         } else if SQUARE_SIDE - 1 < lon {
             return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
+                "Position: {}: lon {} is greater than {}",
                 "lon",
                 lon,
                 SQUARE_SIDE - 1
@@ -83,14 +68,14 @@ impl Position {
     pub fn update(lat: usize, lon: usize) -> Result<Self, String> {
         if SQUARE_SIDE - 1 < lat {
             return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
+                "Position: {}: lat {} is greater than {}",
                 "lat",
                 lat,
                 SQUARE_SIDE - 1
             ));
         } else if SQUARE_SIDE - 1 < lon {
             return Err(format!(
-                "Position: {}: {} is less than zero or greater than {}",
+                "Position: {}: lon {} is greater than {}",
                 "lon",
                 lon,
                 SQUARE_SIDE - 1

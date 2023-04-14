@@ -1,14 +1,14 @@
 use interact::link::GameList;
 use interact::link::GameListEntry;
 use interact::site::SITE_LINK;
-use std::time::Duration;
+use utils_files::event_source_state::EventSourceState;
 use utils_files::request::{get_request, send_player_amount_update};
 use utils_files::sky::Sky;
 use utils_files::window_state::ClientWindow;
 use wasm_bindgen::JsValue;
 use yew::classes;
+use yew::html;
 use yew::prelude::*;
-use yew::{html, platform::time::sleep};
 
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
@@ -19,11 +19,13 @@ const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
 const INFORMATION: &str =
     "Personal Website as well as explanation of tech stack will be made available in the future";
 
+#[allow(dead_code)]
 pub struct Menu {
     client_window: ClientWindow,
     number_of_players: u8,
     links: Option<GameList>,
     settings: bool,
+    event_source: EventSourceState,
 }
 
 pub enum Pages {
@@ -46,6 +48,7 @@ pub enum MenuMsg {
     AwaitUpdate,
     UpdateLinks(Vec<GameListEntry>),
     NotReceived,
+    EndSource,
     None,
 }
 
@@ -66,8 +69,7 @@ impl Component for Menu {
         client_window.player_id_tag.clone().unwrap_or_else(|| {
             web_sys::console::log_1(&"board_page: create(): Getting new player_id".into());
             _ctx.link().send_future(async move {
-                match get_request::<(String, String)>(&format!("{SITE_LINK}/get_player_id")).await
-                {
+                match get_request::<(String, String)>(&format!("{SITE_LINK}/get_player_id")).await {
                     Ok(result) => Self::Message::ReceivedId(result),
                     Err(error) => {
                         web_sys::console::log_2(
@@ -80,27 +82,23 @@ impl Component for Menu {
             });
             String::new()
         });
-        _ctx.link().send_future(async move {
-            match get_request::<Vec<GameListEntry>>(
-                &format!("{}/active_game_links", SITE_LINK).as_str(),
-            )
-            .await
-            {
-                Ok(result) => Self::Message::UpdateLinks(result),
-                Err(error) => {
-                    web_sys::console::log_2(
-                        &"board_page: create(): get_request(), 112;".into(),
-                        &JsValue::from(error),
-                    );
-                    Self::Message::NotReceived
-                }
-            }
-        });
+        let callback_update = _ctx
+            .link()
+            .callback(move |_: ()| Self::Message::AwaitUpdate);
+        let callback_end = _ctx.link().callback(move |_: ()| Self::Message::EndSource);
+        callback_update.emit(());
+        let event_source: EventSourceState = EventSourceState::new(
+            &format!("{SITE_LINK}/main/page_stream"),
+            None,
+            move |_| callback_update.emit(()),
+            move |_| callback_end.emit(()),
+        );
         Self {
             client_window,
             number_of_players: 2,
             links: None,
             settings: false,
+            event_source,
         }
     }
 
@@ -172,9 +170,11 @@ impl Component for Menu {
                     )
                     .unwrap();
             }
+            Self::Message::EndSource => {
+                self.event_source.close_connection();
+            }
             Self::Message::AwaitUpdate => {
                 _ctx.link().send_future(async move {
-                    sleep(Duration::from_secs(10)).await;
                     Self::Message::UpdateLinks(
                         get_request::<Vec<GameListEntry>>(
                             format!("{}/active_game_links", SITE_LINK).as_str(),
@@ -186,7 +186,6 @@ impl Component for Menu {
             }
             Self::Message::UpdateLinks(game_links) => {
                 self.links = Some(game_links);
-                _ctx.link().send_message(Self::Message::AwaitUpdate);
             }
             _ => {}
         }
