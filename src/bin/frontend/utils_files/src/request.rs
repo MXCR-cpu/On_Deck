@@ -34,7 +34,7 @@ pub async fn send_player_amount_update<'a>(number_of_players: u8) -> Result<(), 
 
 pub async fn fire_on_position<T: DeserializeOwned + Serialize>(item: T, game_number: u32) -> Result<(), String> {
     match reqwest::Client::new()
-        .post(format!("http://127.0.0.1:8000/fire/{}", game_number))
+        .post(format!("http://127.0.0.1:8000/game/fire/{}", game_number))
         .json::<T>(&item)
         .send()
         .await {

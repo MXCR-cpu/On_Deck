@@ -1,14 +1,16 @@
 # TODO
-- [ ] User game authentication
+- [X] User game authentication
 	- [X] Add additional hashed private_id_key
 	- [X] Allow server the ability to authenticate user fire requests
 		- [X] Client-side half of sealing-key process, 
 			- [X] Find a way to have the client register a new challenge with the game_state requests
 			- [X] Incorporate it in the JSON response sent towards the fire handle function.
-	- [ ] Spectating feature for lost or spectator players
+	- [X] Spectating feature for lost or spectator players
 - [ ] Update board_page rendering
 	- [X] Add an empty board style
 	- [X] Add an ship board style
+    - [ ] Apply Battlefield board titles
+    - [ ] Apply board names component
 	- [ ] Add Ship Placement Prompt
 		- [ ] Create a ready stage where everyone can place their ships
 - [ ] Salvo based progression

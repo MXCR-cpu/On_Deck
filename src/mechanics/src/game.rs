@@ -8,6 +8,7 @@ pub struct Game {
     pub player_tags: Vec<String>,
     pub challenge: String,
     pub game_number: u64,
+    pub shot_list: u32,
 }
 
 impl Game {
@@ -18,6 +19,7 @@ impl Game {
             player_tags: Vec::with_capacity(number_of_players),
             challenge: String::new(),
             game_number,
+            shot_list: 0,
         }
     }
 

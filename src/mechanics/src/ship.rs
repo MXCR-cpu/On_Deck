@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Ship {
-    name: String,
-    location: Vec<(usize, usize)>,
+    pub name: String,
+    pub location: Vec<(usize, usize)>,
 }
 
 #[allow(dead_code)]

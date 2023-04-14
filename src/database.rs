@@ -20,7 +20,7 @@ pub async fn database_get<T: ToRedisArgs>(
     {
         Ok(result) => Ok(result),
         Err(error) => Err(format!(
-            "database.rs, 16: Redis Cmd Failed to execute `JSON.GET` query command; {}",
+            "database.rs: database_get(): Redis Cmd Failed to execute `GET` query command; {}",
             error
         )),
     }
@@ -37,7 +37,7 @@ pub async fn database_set<T: ToRedisArgs>(
     {
         Ok(_) => Ok(()),
         Err(error) => Err(format!(
-            "database.rs, 26: Redis Cmd Failed to execute `JSON.GET` query command; {}",
+            "database.rs: database_set(): Redis Cmd Failed to execute `SET` query command; {}",
             error
         )),
     }

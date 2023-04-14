@@ -8,7 +8,7 @@
 	--panel_color_background: rgba(0,0,0,0.25);
 	--board_width: 500px;
 	--board_height: 400px;
-	--battlefield_padding: 10px;
+	--battlefield_padding: 100px;
 	--sky_color: #00B5E2;
 	--normal_sky_color: #00B5E2;
 	--night_sky_color: #13294B;
@@ -200,12 +200,25 @@ html {
 	/* overflow: hidden; */
 }
 
+.round_heading {
+	position: absolute;
+	width: 100%;
+	height: 10%;
+	color: rgb(256, 256, 256);
+	/* transform: translate(-50%, 0%); */
+	z-index: 4;
+}
+
+.round_title {
+	/* left: 50%; */
+	transform: translate(50%, 0%);
+}
+
 .battlefield {
 	position: absolute;
 	left: 50%;
 	height: 100%;
 	width: 85%;
-	padding: var(--battlefield_padding);
 	padding-bottom: var(--battlefield_padding);
 	transform: translate(-50%, 0%);
 	display: flex;
@@ -217,6 +230,11 @@ html {
 
 .battlefield::-webkit-scrollbar {
 	display: none;
+}
+
+.player_title {
+	position: absolute;
+	color: rgb(256, 256, 256);
 }
 
 .board {

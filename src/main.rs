@@ -5,7 +5,6 @@ extern crate rocket;
 use crate::database::{
     database_get, database_set, json_database_get, json_database_set, RedisDatabase,
 };
-// use battleship::board::Board;
 use battleship::keys::PlayerKeys;
 use battleship::start;
 use database::json_database_get_simple;
@@ -15,13 +14,19 @@ use interact::site::SITE_LINK;
 use mechanics::game::Game;
 use mechanics::position::FirePosition;
 use rand::{distributions::Alphanumeric, Rng};
+use rocket::Shutdown;
 use rocket::{
     fairing::AdHoc,
     fs::NamedFile,
-    response::{status::NotFound, Redirect},
+    response::{
+        status::NotFound,
+        stream::{Event, EventStream},
+        Redirect,
+    },
     serde::json::Json,
+    tokio::select,
 };
-use rocket_db_pools::{deadpool_redis::redis, Connection, Database};
+use rocket_db_pools::{Connection, Database};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -106,6 +111,9 @@ async fn start_game(mut rds: Connection<RedisDatabase>, players_obj: Json<HashMa
     )
     .await
     .unwrap();
+    database_set(&vec!["main_page_update", "true"], &mut rds)
+        .await
+        .unwrap();
     //Updating the current game list key
     let mut current_games: GameList =
         json_database_get::<_, GameList>(&vec!["current_games", "."], &mut rds)
@@ -115,6 +123,29 @@ async fn start_game(mut rds: Connection<RedisDatabase>, players_obj: Json<HashMa
     json_database_set::<GameList>(&["current_games", "."], &current_games, &mut rds)
         .await
         .unwrap();
+}
+
+#[get("/page_stream")]
+async fn get_page_stream(
+    mut rds: Connection<RedisDatabase>,
+    mut shutdown: Shutdown,
+) -> EventStream![] {
+    EventStream! {
+        loop {
+            select! {
+                _ = &mut shutdown => {
+                    yield Event::data("end");
+                    break;
+                }
+                value = database_get(&"links_update", &mut rds) => {
+                    if value.unwrap_or("false".to_string()).eq("true") {
+                        database_set(&vec!["links_update", "false"], &mut rds).await.unwrap();
+                        yield Event::data("");
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[get("/active_game_links")]
@@ -129,8 +160,6 @@ async fn get_active_game_links(mut rds: Connection<RedisDatabase>) -> Result<Str
 }
 
 // Game Page Functions
-//TODO: Tie the player_id to a unique player spot within game_id
-//and deal with excess ids, converting them to spectators, if otherwise
 #[get("/<game_id>/<player_id>")]
 async fn process_game_request(
     mut rds: Connection<RedisDatabase>,
@@ -146,8 +175,10 @@ async fn process_game_request(
                 panic!()
             }
         };
-
-    if game_state.player_tags.len() == game_state.number_of_players || game_state.player_tags.contains(&player_id) {
+    // Passing game information if it is already filled
+    if game_state.player_tags.len() == game_state.number_of_players
+        || game_state.player_tags.contains(&player_id)
+    {
         return return_file(format!("{BOARD_DIR}dist/index.html")).await;
     }
     game_state.player_tags.push(player_id);
@@ -162,11 +193,7 @@ async fn process_game_request(
     .await
     .unwrap();
     if game_state.player_tags.len() < game_state.number_of_players {
-        json_database_set::<Game>(
-            &vec![game_tag.as_str(), "."],
-            &game_state,
-            &mut rds,
-            )
+        json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
             .await
             .unwrap();
         return return_file(format!("{BOARD_DIR}dist/index.html")).await;
@@ -177,11 +204,14 @@ async fn process_game_request(
         .take(10)
         .map(char::from)
         .collect::<String>();
-    json_database_set::<Game>(
-        &vec![game_tag.as_str(), "."],
-        &game_state,
+    game_state.boards.start_board();
+    database_set(
+        &vec![format!("game_update_{game_id}").as_str(), "true"],
         &mut rds,
-        )
+    )
+    .await
+    .unwrap();
+    json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
         .await
         .unwrap();
     return_file(format!("{BOARD_DIR}dist/index.html")).await
@@ -193,7 +223,7 @@ async fn get_game_state(
     game_id: u32,
     player_id: String,
     access_key: String,
-) -> Json<(String, String, String)> {
+) -> Json<(String, String, String, String)> {
     let game_state: Game =
         match json_database_get(&vec![format!("game_{game_id}").as_str(), "."], &mut rds).await {
             Ok(boards) => boards,
@@ -202,36 +232,82 @@ async fn get_game_state(
                 panic!()
             }
         };
-    let vector_state_string: String = serde_json::to_string(&game_state.boards.board).unwrap();
+    let player_tags_string: String = serde_json::to_string(&game_state.player_tags).unwrap();
+    // Spector mode if already filled
     if !game_state.player_tags.contains(&player_id)
         && game_state.player_tags.len() == game_state.number_of_players
     {
-        return Json(("".to_string(), "".to_string(), vector_state_string));
+        return Json((
+            "".to_string(),
+            player_tags_string,
+            "".to_string(),
+            serde_json::to_string(&game_state.boards.positions).unwrap(),
+        ));
     }
-    let key: String = json_database_get(&vec![player_id.as_str(), ".info_key"], &mut rds)
-        .await
-        .unwrap();
-    if !key.eq(&access_key) {
-        return Json((game_state.challenge, "".to_string(), vector_state_string));
+    let decrypt_key: Vec<u8> =
+        json_database_get(&vec![player_id.as_str(), ".decryption_key"], &mut rds)
+            .await
+            .unwrap();
+    let vec_access_key: Vec<u8> = (0..access_key.len() / 2)
+        .map(|index: usize| {
+            i64::from_str_radix(&access_key[(2 * index)..(2 * index) + 2], 16).unwrap() as u8
+        })
+        .collect::<Vec<u8>>();
+    let key_result: String = std::str::from_utf8(&decrypt(&decrypt_key, &vec_access_key).unwrap())
+        .unwrap()
+        .to_string();
+    if !key_result.eq("Request") || game_state.challenge.eq("") {
+        println!("Key Failed to Triggered for {player_id}: Key {key_result}");
+        return Json((
+            game_state.challenge,
+            player_tags_string,
+            "".to_string(),
+            serde_json::to_string(&game_state.boards.positions).unwrap(),
+        ));
     }
     let player_index: usize = game_state
         .player_tags
         .iter()
         .position(|x| player_id.eq(x))
         .unwrap();
-    let ship_placements: String = json_database_get_simple(
-        &vec![
-            format!("game_{game_id}").as_str(),
-            format!(".boards.ship_set[{player_index}]").as_str(),
-        ],
-        &mut rds,
-    )
-    .await
-    .unwrap();
-    Json((game_state.challenge, ship_placements, vector_state_string))
+    Json((
+        game_state.challenge,
+        player_tags_string,
+        serde_json::to_string(&game_state.boards.ship_set[player_index]).unwrap(),
+        serde_json::to_string(
+            &game_state
+                .boards
+                .get_board_with_player_positions(player_index),
+        )
+        .unwrap(),
+    ))
 }
 
-// Board Page Functions
+#[get("/<game_number>/game_stream")]
+async fn get_game_stream(
+    mut rds: Connection<RedisDatabase>,
+    mut shutdown: Shutdown,
+    game_number: usize,
+) -> EventStream![] {
+    let game_tag: String = format!("game_update_{game_number}");
+    EventStream! {
+        loop {
+            select! {
+                _ = &mut shutdown => {
+                    yield Event::data("end");
+                    break;
+                }
+                value = database_get(&game_tag, &mut rds) => {
+                    if value.unwrap_or("false".to_string()).eq("true") {
+                        database_set(&vec![game_tag.as_str(), "false"], &mut rds).await.unwrap();
+                        yield Event::data("");
+                    }
+                }
+            }
+        }
+    }
+}
+
 //TODO: Find a way to allow turn-progression tracking on the backend
 //and inhibit fire request if true
 #[post("/fire/<game_id>", format = "json", data = "<fire_position_json>")]
@@ -239,35 +315,61 @@ async fn fire(
     mut rds: Connection<RedisDatabase>,
     fire_position_json: Json<FirePosition>,
     game_id: u32,
-) -> Json<String> {
-    let game_tag: String = format!("game_{game_id}");
+) -> Json<bool> {
     let fire_position: FirePosition = fire_position_json.into_inner();
-    let active_game_challenge: String =
-        json_database_get::<_, String>(&vec![game_tag.as_str(), ".challenge"], &mut rds)
-            .await
-            .unwrap();
-    let player_keys: PlayerKeys =
-        json_database_get(&vec![fire_position.from_player.as_str(), "."], &mut rds)
-            .await
-            .unwrap();
-    // Verify request and update fired state for player
-    if !active_game_challenge.eq(&std::str::from_utf8(
-        &decrypt(&player_keys.decryption_key, &fire_position.challenge).unwrap(),
+    let game_tag: String = format!("game_{game_id}");
+    let mut game_state: Game =
+        match json_database_get(&vec![game_tag.as_str(), "."], &mut rds).await {
+            Ok(boards) => boards,
+            Err(error) => {
+                println!("{}", error);
+                panic!()
+            }
+        };
+    if (game_state.shot_list & (1 << fire_position.from)) != 0 {
+        return Json(false);
+    }
+    let decrypt_key: Vec<u8> = json_database_get(
+        &vec![
+            game_state.player_tags[fire_position.from].as_str(),
+            ".decryption_key",
+        ],
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    if !game_state.challenge.eq(&std::str::from_utf8(
+        &decrypt(&decrypt_key, &fire_position.challenge).unwrap(),
     )
     .unwrap())
     {
-        return Json("Rejectd Fire Order".to_string());
+        return Json(false);
     }
-    redis::cmd("JSON.SET")
-        .arg(&[
-            game_tag.as_str(),
-            fire_position.print().as_str(),
-            "'\"true\"'",
-        ])
-        .query_async::<_, ()>(&mut *rds)
+    game_state.shot_list = game_state.shot_list & (1 << fire_position.from);
+    format!("{:b}", game_state.shot_list);
+    game_state.boards.positions = game_state
+        .boards
+        .fire(fire_position.lon, fire_position.lat, fire_position.to)
+        .unwrap();
+    if game_state.shot_list
+        ^ (2_u32
+            .checked_pow(game_state.number_of_players as u32)
+            .unwrap()
+            - 1)
+        == 0
+    {
+        database_set(
+            &vec![format!("game_update_{game_id}").as_str(), "true"],
+            &mut rds,
+        )
         .await
         .unwrap();
-    Json("Processed Fire Order".to_string())
+        game_state.shot_list = 0;
+    }
+    json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
+        .await
+        .unwrap();
+    Json(true)
 }
 
 #[get("/<path..>")]
@@ -310,8 +412,11 @@ fn rocket() -> _ {
                 get_active_game_links
             ],
         )
-        .mount("/main", routes![main_page, main_files])
-        .mount("/game", routes![process_game_request, get_game_state])
+        .mount("/main", routes![get_page_stream, main_page, main_files])
+        .mount(
+            "/game",
+            routes![get_game_stream, fire, process_game_request, get_game_state],
+        )
         .mount("/board", routes![fire, board_files])
         .mount("/extra_files", routes![extra_files])
 }
