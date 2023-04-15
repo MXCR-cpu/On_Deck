@@ -10,7 +10,7 @@ use std::time::Duration;
 use utils_files::event_source_state::EventSourceState;
 use utils_files::request::fire_on_position;
 use utils_files::request::get_request;
-use utils_files::sky::Sky;
+use utils_files::sky::Stars;
 use utils_files::window_state::ClientWindow;
 use wasm_bindgen::JsValue;
 use yew::classes;
@@ -226,7 +226,7 @@ impl Component for ClientGame {
         html! {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
                 if !self.client_window.day {
-                    <Sky max_stars={20} star_size={2} log={false} />
+                    <Stars max_stars={20} star_size={2} log={false} />
                 }
                 <div class={classes!("ocean_setting", if self.client_window.day { "ocean_day" } else { "ocean_night" })}>
                     <div class={"round_heading"}>
@@ -246,7 +246,7 @@ impl Component for ClientGame {
                                             indecies.clone()
                                                 .into_iter()
                                                 .map(|(x_pos, y_pos): (usize, usize)| {
-                                                    match board[x_pos][y_pos].fired_state[index] {
+                                                    match &board[x_pos][y_pos].fired_state[index] {
                                                         FiredState::Untouched => {
                                                             if index == player_index_unwrapped {
                                                                 return html! {
@@ -272,9 +272,9 @@ impl Component for ClientGame {
                                                                 <button class={map_button_class("empty", x_pos, y_pos)} />
                                                             }
                                                         }
-                                                        FiredState::Ship => {
+                                                        FiredState::Ship(ship_type) => {
                                                             html! {
-                                                                <button class={map_button_class("ship", x_pos, y_pos)} />
+                                                                <button class={classes!(map_button_class("ship", x_pos, y_pos), ship_type)} />
                                                             }
                                                         }
                                                     }

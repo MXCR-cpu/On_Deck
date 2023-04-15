@@ -31,7 +31,7 @@ impl Ship {
             ("Battleship".to_string(), 4),
             ("Destroyer".to_string(), 3),
             ("Submarine".to_string(), 3),
-            ("Patrol Boat".to_string(), 2),
+            ("Patrol_Boat".to_string(), 2),
         ]
         .into_iter()
         .enumerate()
