@@ -20,7 +20,7 @@
 	- [X] New salvo round when all players have fired
 	- [ ] End sequence (win / loss)
 - [ ] Settings Panel
-	- [ ] Flesh out
+	- [ ] Actually Implement
 	- [ ] Allow Player Id Updating
 	- [ ] Graphics Adjuster (Stars, Clouds, Blur, Animations)
 - [ ] Game Assets (SVG)
