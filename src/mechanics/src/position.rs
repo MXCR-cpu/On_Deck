@@ -30,7 +30,7 @@ pub enum FiredState {
     Miss,
     Untouched,
     Empty,
-    Ship,
+    Ship(String),
 }
 
 #[derive(Serialize, Deserialize, Clone)]

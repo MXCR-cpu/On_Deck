@@ -3,7 +3,7 @@ use interact::link::GameListEntry;
 use interact::site::SITE_LINK;
 use utils_files::event_source_state::EventSourceState;
 use utils_files::request::{get_request, send_player_amount_update};
-use utils_files::sky::Sky;
+use utils_files::sky::Stars;
 use utils_files::window_state::ClientWindow;
 use wasm_bindgen::JsValue;
 use yew::classes;
@@ -202,7 +202,7 @@ impl Component for Menu {
                             <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
                     } else {
-                        <Sky max_stars={200} star_size={2} log={false} />
+                        <Stars max_stars={200} star_size={2} log={false} />
                         <div class={classes!("main_screen_ship", "ship_night")}>
                             <img src={format!("{}/extra_files/Menu_Ship_Night.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>

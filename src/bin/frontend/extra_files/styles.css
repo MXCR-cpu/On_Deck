@@ -9,10 +9,9 @@
 	--board_width: 500px;
 	--board_height: 400px;
 	--battlefield_padding: 100px;
-	--sky_color: #00B5E2;
-	--normal_sky_color: #00B5E2;
+	--day_sky_color: #00B5E2;
 	--night_sky_color: #13294B;
-	--normal_ocean_color: #0065C4;
+	--day_ocean_color: #0065C4;
 	--night_ocean_color: #08101c;
 	--standard_radius: 20px;
 	--standard_padding: 10px;
@@ -140,7 +139,7 @@ html {
 }
 
 .sky_day {
-	background-color: var(--normal_sky_color);
+	background-color: var(--day_sky_color);
 }
 
 .sky_night {
@@ -148,7 +147,7 @@ html {
 }
 
 .ocean_day {
-	background-color: var(--normal_ocean_color);
+	background-color: var(--day_ocean_color);
 }
 
 .ocean_night {
@@ -202,7 +201,6 @@ html {
 
 .round_heading {
 	position: absolute;
-	width: 100%;
 	height: 10%;
 	color: rgb(256, 256, 256);
 	/* transform: translate(-50%, 0%); */
@@ -210,8 +208,9 @@ html {
 }
 
 .round_title {
-	/* left: 50%; */
-	transform: translate(50%, 0%);
+	position: fixed;
+	right: 20%;
+	transform: translate(90%, 0%);
 }
 
 .battlefield {
@@ -261,12 +260,12 @@ html {
 }
 
 .main_button_untouched {
-	opacity: 0.1;
+	opacity: 0.2;
   	background-color: rgb(256, 256, 256);
 }
 
 .main_button_untouched:hover {
-  	opacity: 0.2;
+  	opacity: 0.3;
 }
 
 .main_button_hit {
@@ -274,15 +273,36 @@ html {
 }
 
 .main_button_miss {
-  	background-color: rgba(256,256,256,0.5);
+  	background-color: rgba(256,256,256,1);
 }
 
 .main_button_empty {
-  	background-color: rgba(256,256,256,0.5);
+  	background-color: rgba(256,256,256,0.4);
 }
 
 .main_button_ship {
-  background-color: grey;
+	/* background-color: grey; */
+	opacity: 0.5;
+}
+
+.Carrier {
+	background-color: purple;
+}
+
+.Battleship {
+	background-color: green;
+}
+
+.Destroyer {
+	background-color: yellow;
+}
+
+.Submarine {
+	background-color: orange;
+}
+
+.Patrol_Boat {
+	background-color: cyan;
 }
 
 .button_row_0 {

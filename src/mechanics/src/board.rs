@@ -58,20 +58,26 @@ impl Board {
     }
 
     pub fn get_board_with_player_positions(&self, player_index: usize) -> PositionVectors {
-        let player_ships: Vec<(usize, usize)> = self.ship_set[player_index]
+        let player_ships: Vec<(usize, usize, String)> = self.ship_set[player_index]
             .iter()
-            .map(|ship: &Ship| ship.location.clone())
-            .collect::<Vec<Vec<(usize, usize)>>>()
+            .map(|ship: &Ship| {
+                ship.location
+                    .clone()
+                    .into_iter()
+                    .map(|(x_pos, y_pos): (usize, usize)| (x_pos, y_pos, ship.name.clone()))
+                    .collect::<Vec<(usize, usize, String)>>()
+            })
+            .collect::<Vec<Vec<(usize, usize, String)>>>()
             .into_iter()
             .flatten()
-            .collect::<Vec<(usize, usize)>>();
+            .collect::<Vec<(usize, usize, String)>>();
         let mut player_personal_board: PositionVectors = self.positions.clone();
-        for (x_index, y_index) in player_ships.iter() {
+        for (x_index, y_index, ship_name) in player_ships.iter() {
             if player_personal_board[*x_index][*y_index].fired_state[player_index]
                 != FiredState::Hit
             {
                 player_personal_board[*x_index][*y_index].fired_state[player_index] =
-                    FiredState::Ship;
+                    FiredState::Ship(ship_name.to_string());
             }
         }
         player_personal_board
@@ -97,7 +103,8 @@ impl Board {
         } else {
             FiredState::Miss
         };
-        new_positions[lon as usize][lat as usize] = Position::new(lon, lat, Some(new_fired_state), 0)?;
+        new_positions[lon as usize][lat as usize] =
+            Position::new(lon, lat, Some(new_fired_state), 0)?;
         Ok(new_positions)
     }
 }

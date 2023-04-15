@@ -214,6 +214,9 @@ async fn process_game_request(
     json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
         .await
         .unwrap();
+    database_set(&vec!["links_update", "true"], &mut rds)
+        .await
+        .unwrap();
     return_file(format!("{BOARD_DIR}dist/index.html")).await
 }
 
