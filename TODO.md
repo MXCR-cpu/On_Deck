@@ -13,6 +13,7 @@
     - [ ] Apply board names component
 	- [ ] Add Ship Placement Prompt
 		- [ ] Create a ready stage where everyone can place their ships
+        - [ ] Convert ship storage from strings a u8 int that indicates ship type
 - [ ] Fix Event Stream fixture
     - Open process needs to give everyone enough time to run but restrict each user to roughly
     one update request at a time
