@@ -274,7 +274,9 @@ impl Component for ClientGame {
                                                         }
                                                         FiredState::Ship(ship_type) => {
                                                             html! {
-                                                                <button class={classes!(map_button_class("ship", x_pos, y_pos), ship_type)} />
+                                                                <button class={classes!(map_button_class("ship", x_pos, y_pos), ship_type)}>
+                                                                    <img src="http://127.0.0.1:8000/extra_files/ship_battleship_day.svg" />
+                                                                </button>
                                                             }
                                                         }
                                                     }

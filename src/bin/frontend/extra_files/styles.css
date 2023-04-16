@@ -249,6 +249,8 @@ html {
 
 .main_button {
 	position: absoute;
+	width: calc(var(--board_width)/10);
+	height: calc(var(--board_height)/10);
 	color: white;
 	font-size: 16px;
 	border: none;
@@ -260,49 +262,57 @@ html {
 }
 
 .main_button_untouched {
-	opacity: 0.2;
-  	background-color: rgb(256, 256, 256);
+	background-color: rgba(256, 256, 256, 0.1);
 }
 
 .main_button_untouched:hover {
-  	opacity: 0.3;
+	background-color: rgba(256, 256, 256, 0.5);
 }
 
 .main_button_hit {
-  	background-color: red;
+	background-color: red;
 }
 
 .main_button_miss {
-  	background-color: rgba(256,256,256,1);
+	background-color: rgba(256,256,256,1);
 }
 
 .main_button_empty {
-  	background-color: rgba(256,256,256,0.4);
+	background-color: rgba(256,256,256,0.3);
 }
 
 .main_button_ship {
-	/* background-color: grey; */
-	opacity: 0.5;
+	background-color: rgba(256,256,256,0);
 }
 
-.Carrier {
-	background-color: purple;
+.Carrier > img {
+	width: calc(var(--board_width)/10);
+	height: calc(var(--board_height)/10);
+	overflow: hidden;
 }
 
-.Battleship {
-	background-color: green;
+.Battleship > img {
+	width: calc(var(--board_width)/10);
+	height: calc(var(--board_height)/10);
+	overflow: hidden;
 }
 
-.Destroyer {
-	background-color: yellow;
+.Destroyer > img {
+	width: calc(var(--board_width)/10);
+	height: calc(var(--board_height)/10);
+	overflow: hidden;
 }
 
-.Submarine {
-	background-color: orange;
+.Submarine > img {
+	width: calc(var(--board_width)/10);
+	height: calc(var(--board_height)/10);
+	overflow: hidden;
 }
 
-.Patrol_Boat {
-	background-color: cyan;
+.Patrol_Boat > img {
+	width: calc(var(--board_width)/10);
+	height: calc(var(--board_height)/10);
+	overflow: hidden;
 }
 
 .button_row_0 {
