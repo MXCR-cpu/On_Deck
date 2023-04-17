@@ -19,13 +19,13 @@
 		<rect width="10%" height="10%" rx="2" x="35%" y="45%"
 			style="fill: rgb(205, 205, 205);" />
 		<!-- Body -->
-		<rect width="30%" height="20%" rx="5" x="30%" y="50%"
+		<rect width="30%" height="15%" rx="5" x="30%" y="50%"
 			style="fill: rgb(115, 114, 120);" />
 		<rect width="35%" height="5%" rx="3" x="27.5%" y="50%"
 			style="fill: rgb(199, 199, 199);" />
 	</svg>
 	<!-- Wave Cover -->
-	<rect widtk="50%" height="20%" rx="0" x="20%" y="62%" style="fill: rgb(0, 101, 196);" />
+	<rect width="50%" height="10%" rx="0" x="20%" y="62%" style="fill: rgb(0, 101, 196);" />
 	<rect width="35%" height="5%" rx="2.5" x="27.5%" y="60%" style="fill: rgb(256, 256, 256);">
 		<animate
 			attributeName="fill-opacity"
