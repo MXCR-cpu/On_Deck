@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE xml>
+<svg
+	viewBox="0 0 100 100"
+	width="50"
+	height="40"
+	preserveAspectRatio="xMinYMid meet"
+	version="1.0"
+	xmlns="http://www.w3.org/2000/svg">
+	<!-- Background -->
+	<!-- <rect width="100%" height="100%" rx="0" x="0%" y="0%" style="fill: rgb(0, 101, 196);" /> -->
+	<svg>
+		<animate
+			attributeName="y"
+			values="0%;2.5%;0%"
+			dur="3s"
+			repeatCount="indefinite" />
+		<!-- Head -->
+		<rect width="10%" height="10%" rx="2" x="30%" y="43%"
+			style="fill: rgb(205, 205, 205);" />
+		<!-- Body -->
+		<rect width="60%" height="15%" rx="5" x="20%" y="50%"
+			style="fill: rgb(199, 199, 199);" />
+	</svg>
+	<!-- Wave Cover -->
+	<rect width="60%" height="20%" rx="0" x="20%" y="62%" style="fill: rgb(0, 101, 196);" />
+	<rect width="65%" height="5%" rx="2.5" x="17.5%" y="60%" style="fill: rgb(256, 256, 256);">
+		<animate
+			attributeName="fill-opacity"
+			begin="0s"
+			values="0.0;0.5;0.0"
+			dur="3s"
+			repeatCount="indefinite"
+		/>
+	</rect>
+</svg>
