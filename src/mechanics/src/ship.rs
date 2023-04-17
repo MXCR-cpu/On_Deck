@@ -27,11 +27,11 @@ impl Ship {
 
     pub fn new_ships() -> Vec<Self> {
         [
-            ("Carrier".to_string(), 5),
-            ("Battleship".to_string(), 4),
-            ("Destroyer".to_string(), 3),
+            ("Carrier".to_string(), 2),
+            ("Battleship".to_string(), 3),
             ("Submarine".to_string(), 3),
-            ("Patrol_Boat".to_string(), 2),
+            ("Destroyer".to_string(), 4),
+            ("Patrol_Boat".to_string(), 5),
         ]
         .into_iter()
         .enumerate()
