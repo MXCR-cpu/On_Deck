@@ -10,10 +10,12 @@
 	- [X] Add an empty board style
 	- [X] Add an ship board style
     - [ ] Apply Battlefield board titles
-    - [ ] Apply board names component
+        - [ ] Add hit and miss animations
+    - [X] Apply board names component
 	- [ ] Add Ship Placement Prompt
 		- [ ] Create a ready stage where everyone can place their ships
-        - [ ] Convert ship storage from strings a u8 int that indicates ship type
+            - Bind this to an empty player board with a click and drag callback
+    - [ ] Convert ship storage from strings a u8 int that indicates ship type
 - [ ] Fix Event Stream fixture
     - Open process needs to give everyone enough time to run but restrict each user to roughly
     one update request at a time
@@ -48,3 +50,4 @@
 - [ ] Determine how many players a single instance can support (How many Rocket workers are there?)
 - [ ] Perhaps retry to incorporate Server-Side events into the application again
 - [X] Investigate a better encryption algorithm that could be used to verify requests.
+- [ ] Investigate if subsequent instances should need to be created in order to support the multitude of individual game_state instances
