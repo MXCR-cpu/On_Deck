@@ -43,18 +43,18 @@ impl Component for ClientGame {
         let encryption_key: Vec<u8> =
             serde_json::from_str::<Vec<u8>>(&client_window.player_id_key.clone().unwrap_or_else(|| {
                 _ctx.link().send_message(Self::Message::Response(
-                    ClientError::new().push(
+                    ClientError::from(
                         file!(),
                         &format!("create(): failed to clone and unwrap the player_id_key field of client_window"))));
                 panic!()
             })).unwrap_or_else(|_| {
                 _ctx.link().send_message(Self::Message::Response(
-                    ClientError::new().push(file!(), "create(): failed to parse string with serde_json")));
+                    ClientError::from(file!(), "create(): failed to parse string with serde_json")));
                 panic!()
             });
         let access_message: String = encrypt(&encryption_key, String::from("Request").as_bytes())
             .unwrap_or_else(|error: SecpError| {
-                _ctx.link().send_message(Self::Message::Response(ClientError::new().push(
+                _ctx.link().send_message(Self::Message::Response(ClientError::from(
                     file!(),
                     &format!(
                         "create(): Failed to create access_message: {}: uncoded key (Length {}):{:?}",
