@@ -1,18 +1,21 @@
 use interact::link::GameList;
 use interact::link::GameListEntry;
 use interact::site::SITE_LINK;
+use navbar_component::Navbar;
 use utils_files::event_source_state::EventSourceState;
 use utils_files::request::{get_request, send_player_amount_update};
 use utils_files::sky::Stars;
+use utils_files::web_error::ClientError;
 use utils_files::window_state::ClientWindow;
-use wasm_bindgen::JsValue;
 use yew::classes;
 use yew::html;
 use yew::prelude::*;
 
+mod navbar_component;
+mod panel_component;
+
 const MAX_PLAYERS: u8 = 8;
 const MIN_PLAYERS: u8 = 2;
-
 const DONATION_MESSAGE: &str =
     "Although I am not accepting donations right now, just know that I respect and appreciate your consideration.\n\n\n - MXCR_cpu -";
 const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
@@ -45,10 +48,11 @@ pub enum MenuMsg {
     Sent,
     NotSending,
     ReceivedId((String, String)),
-    AwaitUpdate,
-    UpdateLinks(Vec<GameListEntry>),
     NotReceived,
-    EndSource,
+    AwaitUpdate,
+    UpdateLinks(Option<Vec<GameListEntry>>),
+    EndUpdate,
+    Response(ClientError),
     None,
 }
 
@@ -57,27 +61,26 @@ impl Component for Menu {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        let client_window: ClientWindow = match ClientWindow::new() {
-            Ok(window) => window,
-            Err(error) => {
-                web_sys::console::log_1(&JsValue::from(format!(
-                    "main_page/src/main.rs: create(): Failed to create ClientWindow {error};"
-                )));
-                panic!()
-            }
-        };
+        let client_window: ClientWindow =
+            ClientWindow::new().unwrap_or_else(|error: ClientError| {
+                _ctx.link().send_message(Self::Message::Response(
+                    error.push(file!(), "create(): failed to create ClientWindow"),
+                ));
+                panic!();
+            });
         client_window.player_id_tag.clone().unwrap_or_else(|| {
-            web_sys::console::log_1(&"board_page: create(): Getting new player_id".into());
+            _ctx.link()
+                .send_message(Self::Message::Response(ClientError::from(
+                    file!(),
+                    "board_page: create(): Getting new player_id",
+                )));
             _ctx.link().send_future(async move {
                 match get_request::<(String, String)>(&format!("{SITE_LINK}/get_player_id")).await {
                     Ok(result) => Self::Message::ReceivedId(result),
-                    Err(error) => {
-                        web_sys::console::log_2(
-                            &"board_page/src/main.rs: create(): get_request(): ".into(),
-                            &JsValue::from(error),
-                        );
-                        Self::Message::NotReceived
-                    }
+                    Err(error) => Self::Message::Response(error.push(
+                        file!(),
+                        "create(): client_window.player_id_tag failed to unwrap",
+                    )),
                 }
             });
             String::new()
@@ -85,7 +88,7 @@ impl Component for Menu {
         let callback_update = _ctx
             .link()
             .callback(move |_: ()| Self::Message::AwaitUpdate);
-        let callback_end = _ctx.link().callback(move |_: ()| Self::Message::EndSource);
+        let callback_end = _ctx.link().callback(move |_: ()| Self::Message::EndUpdate);
         callback_update.emit(());
         let event_source: EventSourceState = EventSourceState::new(
             &format!("{SITE_LINK}/main/page_stream"),
@@ -148,7 +151,9 @@ impl Component for Menu {
                 _ctx.link().send_future(async move {
                     match send_player_amount_update(number_of_players).await {
                         Ok(()) => Self::Message::Sent,
-                        Err(_) => Self::Message::NotSending,
+                        Err(error) => Self::Message::Response(
+                            error.push(file!(), "update(): failed to send future"),
+                        ),
                     }
                 });
             }
@@ -170,22 +175,22 @@ impl Component for Menu {
                     )
                     .unwrap();
             }
-            Self::Message::EndSource => {
-                self.event_source.close_connection();
-            }
             Self::Message::AwaitUpdate => {
                 _ctx.link().send_future(async move {
                     Self::Message::UpdateLinks(
-                        get_request::<Vec<GameListEntry>>(
+                        get_request::<Option<Vec<GameListEntry>>>(
                             format!("{}/active_game_links", SITE_LINK).as_str(),
                         )
                         .await
-                        .unwrap(),
+                        .unwrap_or(None),
                     )
                 });
             }
-            Self::Message::UpdateLinks(game_links) => {
-                self.links = Some(game_links);
+            Self::Message::UpdateLinks(game_links_option) => {
+                self.links = game_links_option;
+            }
+            Self::Message::EndUpdate => {
+                self.event_source.close_connection();
             }
             _ => {}
         }
@@ -193,7 +198,11 @@ impl Component for Menu {
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
-        let onclick = |message: Self::Message| _ctx.link().callback(move |_| message.clone());
+        let day_callback_value = _ctx.link().send_message(Self::Message::ChangeDayState);
+        let day_callback: Callback<MouseEvent> = Callback::from(move |_| day_callback_value);
+        let setting_callback_value = _ctx.link().send_message(Self::Message::Settings);
+        let setting_callback: Callback<MouseEvent> =
+            Callback::from(move |_| setting_callback_value);
         html! {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
                 <div class={"background"}>
@@ -208,23 +217,12 @@ impl Component for Menu {
                         </div>
                     }
                 </div>
-                <div class={"top_row"}>
-                    <button class={"button_col_0"} onclick={onclick(Self::Message::Alert(DONATION_MESSAGE.to_string()))} alt={"Donations"}>
-                        { "💸" }
-                    </button>
-                    <button class={"button_col_1"} onclick={onclick(Self::Message::GoTo(GITHUB_LINK.to_string()))}>
-                        { "🐙" }
-                    </button>
-                    <button class={"button_col_3"} onclick={onclick(Self::Message::Alert(INFORMATION.to_string()))}>
-                        { "🧠" }
-                    </button>
-                    <button class={"button_col_4"} onclick={onclick(Self::Message::ChangeDayState)}>{
-                        if self.client_window.day { "☀️" } else { "🌙" }
-                    }</button>
-                    <button class={"button_col_5"} onclick={onclick(Self::Message::Settings)}>{
-                        if self.settings { "🚀" } else { "⚙️" }
-                    }</button>
-                </div>
+                <Navbar
+                    window={self.client_window.window.clone()}
+                    day={self.client_window.day}
+                    settings={self.settings}
+                    change_day={day_callback}
+                    change_setting={setting_callback} />
                 <div class={"panel_base"}>{
                     self.render_page(_ctx, if self.settings { Pages::Settings } else { Pages::Main })
                 }</div>
@@ -274,7 +272,6 @@ impl Menu {
                     </div>
                 }
             }
-            // This needs to be completed
             Pages::Settings => {
                 html! {
                     <div>
