@@ -1,4 +1,3 @@
-use utils_files::window_state::ClientWindow;
 use web_sys::Window;
 use yew::{html, Component, Context, Properties, Callback};
 
@@ -66,7 +65,7 @@ impl Component for Navbar {
                     { "🧠" }
                 </button>
                 <button class={"button_col_4"} onclick={ctx.props().change_day.clone()}>{
-                    if ctx.props()..day { "☀️" } else { "🌙" }
+                    if ctx.props().day { "☀️" } else { "🌙" }
                 }</button>
                 <button class={"button_col_5"} onclick={ctx.props().change_setting.clone()}>{
                     if ctx.props().settings { "🚀" } else { "⚙️" }
