@@ -1,29 +1,44 @@
-use js_sys::Array;
-use std::panic;
-use wasm_bindgen::JsValue;
+use std::fmt;
 
-pub trait ErrorTrait {
-    fn log_error(&self) -> !;
+#[derive(Clone)]
+pub struct ClientError {
+    stack: Vec<String>,
 }
 
-impl ErrorTrait for String {
-    fn log_error(&self) -> ! {
-        web_sys::console::error(&Array::from(&JsValue::from(self)));
-        panic!("{}", self)
+impl ClientError {
+    pub fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+
+    pub fn from(current_file: &str, new_error: &str) -> Self {
+        let mut stack = Vec::new();
+        stack.push(format!("{}: {}", current_file, new_error));
+        Self { stack }
+    }
+
+    pub fn push(&self, current_file: &str, new_error: &str) -> Self {
+        let mut stack: Vec<String> = self.stack.clone();
+        stack.push(format!("{}: {}", current_file, new_error));
+        Self { stack }
     }
 }
 
-impl ErrorTrait for JsValue {
-    fn log_error(&self) -> ! {
-        web_sys::console::error(&Array::from(self));
-        panic!(
+impl fmt::Display for ClientError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut index: usize = 0;
+        write!(
+            f,
             "{}",
-            self.as_string()
-                .unwrap_or("battleship error: JsValue has not decomposed into String".to_string())
+            self.stack
+                .clone()
+                .into_iter()
+                .rev()
+                .map(|element: String| {
+                    index += 1;
+                    format!("{}{}", "\t".repeat(index - 1), element)
+                })
+                .collect::<Vec<String>>()
+                .join("\n")
         )
     }
-}
-
-pub fn web_log(text: String) {
-    web_sys::console::log(&Array::from(&JsValue::from(text)));
 }

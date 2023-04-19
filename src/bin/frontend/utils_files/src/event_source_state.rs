@@ -57,9 +57,3 @@ impl EventSourceState {
         }
     }
 }
-
-impl Drop for EventSourceState {
-    fn drop(&mut self) {
-        self.event_source.close();
-    }
-}
