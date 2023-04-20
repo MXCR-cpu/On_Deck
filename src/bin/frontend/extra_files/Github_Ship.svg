@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE xml>
+<svg
+	width="800"
+	height="400"
+	version="1.0"
+	xmlns="http://www.w3.org/2000/svg">
+	<style>
+		.large {
+			fill: white;
+			font: bold 128px sans-serif;
+		}
+	</style>
+	<rect width="100%" height="100%" x="0%" y="0%" style="fill: #00B5E2;"/>
+	<text x="20%" y="55%" class="large">On Deck</text>
+	<svg
+		width="200"
+		height="400">
+		<!-- Base -->
+		<rect width="50%" height="30%" x="5%" y="70%" style="fill: #8C979A;"/>
+		<rect width="20%" height="30%" x="20%" y="70%" style="fill: #000; fill-opacity: 0.1;"/>
+		<rect width="30%" height="30%" x="30%" y="70%" style="fill: #A7AFB2;"/>
+		<!-- Head -->
+		<rect width="55%" height="20%" x="5%" y="62.5%" style="fill: #000; fill-opacity: 0.1;"/>
+		<rect width="80%" height="20%" rx="10" x="0%" y="60%" style="fill: #C1C7C9;"/>
+		<rect width="70%" height="17%" rx="10" x="10%" y="60%" style="fill: #000; fill-opacity: 0.05;"/>
+		<rect width="75%" height="15%" rx="10" x="15%" y="60%" style="fill: #DADEDF;"/>
+		<!-- Windows --> 
+		<rect width="78%" height="3%" rx="10" x="14%" y="62%" style="fill: #13A3C6;"/>
+		<rect width="78%" height="3%" rx="10" x="14%" y="68%" style="fill: #13A3C6;"/>
+		<!-- Railing -->
+		<rect width="78%" height="3%" rx="5" x="11%" y="66%" style="fill: #000; fill-opacity: 0.1"/>
+		<rect width="79%" height="3%" rx="5" x="13%" y="65%" style="fill: #CDD6D8;"/>
+		<rect width="78%" height="3%" rx="5" x="11%" y="72%" style="fill: #000; fill-opacity: 0.1"/>
+		<rect width="79%" height="3%" rx="5" x="13%" y="71%" style="fill: #CDD6D8;"/>
+		<!-- Antena -->
+		<rect width="40%" height="1%" rx="5" x="32%" y="10%" style="fill: #A7AFB2;"/>
+		<rect width="40%" height="0.5%" rx="5" x="32%" y="10.5%" style="fill: #000; fill-opacity: 0.1;"/>
+		<rect width="2%" height="10%" rx="5" x="51.5%" y="2%" style="fill: #A7AFB2;"/>
+		<rect width="0.75%" height="10%" rx="5" x="51.5%" y="2%" style="fill: #000; fill-opacity: 0.1;"/>
+		<rect width="5%" height="50%" rx="10" x="50%" y="10%" style="fill: #A7AFB2;"/>
+		<rect width="1.5%" height="50%" rx="10" x="50%" y="10%" style="fill: #000; fill-opacity: 0.1;"/>
+		<rect width="80%" height="1%" rx="5" x="10%" y="30%" style="fill: #A7AFB2;"/>
+		<rect width="80%" height="0.5%" rx="5" x="10%" y="30.5%" style="fill: #000; fill-opacity: 0.1;"/>
+		<!-- Roof -->
+		<rect width="90%" height="5%" rx="10" x="0%" y="55%" style="fill: #A7AFB2;"/>
+		<rect width="10%" height="5%" rx="15" x="-1%" y="55%" style="fill: #000; fill-opacity: 0.1;"/>
+		<rect width="100%" height="2.5%" rx="10" x="-10%" y="60%" style="fill: #000; fill-opacity: 0.1;"/>
+		<rect width="100%" height="2.5%" rx="10" x="-5%" y="58.5%" style="fill: #8C979A;"/>
+		<rect width="100%" height="1%" rx="5" x="-6%" y="60%" style="fill: #000; fill-opacity: 0.1;"/>
+	</svg>
+</svg>
