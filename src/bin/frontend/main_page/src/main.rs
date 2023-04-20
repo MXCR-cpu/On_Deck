@@ -116,13 +116,13 @@ impl Component for Menu {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
                 <div class="background">
                     if self.client_window.day {
-                        <Clouds max_clouds={10} log={false} day={self.client_window.day} />
+                        <Clouds max_clouds={10} day={self.client_window.day} />
                         <div class={classes!("main_screen_ship")}>
                             <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
                     } else {
                         <svg width="100%" height="100%">
-                            <Clouds max_clouds={5} log={false} day={self.client_window.day} />
+                            <Clouds max_clouds={5} day={self.client_window.day} />
                             <Stars max_stars={200} star_size={2} log={false} />
                         </svg>
                         <div class={classes!("main_screen_ship", "ship_night")}>
