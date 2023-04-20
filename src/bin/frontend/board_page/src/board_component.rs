@@ -7,6 +7,8 @@ use mechanics::ship::Ship;
 use utils_files::event_source_state::EventSourceState;
 use utils_files::request::fire_on_position;
 use utils_files::request::get_request;
+use utils_files::web_error::ClientError;
+use wasm_bindgen::JsValue;
 use yew::classes;
 use yew::html;
 use yew::Context;
@@ -28,7 +30,7 @@ pub enum BoardMsg {
     Update((String, String, String, String)),
     EndUpdate,
     Fire(usize, usize, usize),
-    Response(String),
+    Response(ClientError),
 }
 
 #[derive(Properties, PartialEq)]
@@ -122,31 +124,24 @@ impl Component for Board {
                     match fire_on_position::<FirePosition>(
                         FirePosition::new(message_bytes, player_index, to, x_pos, y_pos),
                         game_number,
-                        )
-                        .await
-                        {
-                            Ok(_) => {
-                                Self::Message::Response("Fire Coordinate Sent".to_string())
-                            },
-                            Err(error) => {
-                                Self::Message::Response(
-                                    format!(
-                                        "board_page/src/main.rs: update(): Could send fire post request; \n\t{}",
-                                        error
-                                        )
-                                    )
-                            }
-                        }
+                    )
+                    .await
+                    {
+                        Ok(_) => Self::Message::Response(ClientError::from(
+                            file!(),
+                            "update(): fire request sent",
+                        )),
+                        Err(error) => Self::Message::Response(ClientError::from(
+                            file!(),
+                            &format!("update(): could not send fire post request: {}", error),
+                        )),
+                    }
                 });
             }
-            Self::Message::Response(string) => {
-                web_sys::console::log_1(&string.into());
+            Self::Message::Response(error) => {
+                web_sys::console::log_1(&JsValue::from(format!("{}", error)));
             }
         }
-        true
-    }
-
-    fn changed(&mut self, _ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
         true
     }
 
@@ -257,9 +252,11 @@ impl Component for Board {
 
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
         if first_render {
-            _ctx.link().send_message(Self::Message::Response(
-                "Rendered Board Component".to_string(),
-            ));
+            _ctx.link()
+                .send_message(Self::Message::Response(ClientError::from(
+                    file!(),
+                    "rendered(): rendered board component",
+                )));
         }
     }
 
@@ -278,12 +275,20 @@ impl Board {
         let player_id: String = _ctx.props().player_id_tag.clone();
         let access_message: String = _ctx.props().access_key.clone();
         _ctx.link().send_future(async move {
-            match get_request::<(String, String, String, String)>(format!("{SITE_LINK}/game/{}/{}/{}", game_number, player_id, access_message).as_str()).await
+            match get_request::<(String, String, String, String)>(
+                format!(
+                    "{SITE_LINK}/game/{}/{}/{}",
+                    game_number, player_id, access_message
+                )
+                .as_str(),
+            )
+            .await
             {
                 Ok(result) => BoardMsg::Update(result),
-                Err(error) => {
-                    BoardMsg::Response(format!("board_page/src/board_component.rs: send_update_request(): Could not receive active game link update; \n\t{}", error))
-                }
+                Err(error) => BoardMsg::Response(error.push(
+                    file!(),
+                    "send_update_request(): Could not receive active game link update",
+                )),
             }
         });
     }

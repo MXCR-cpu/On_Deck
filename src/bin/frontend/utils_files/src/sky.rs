@@ -166,11 +166,16 @@ impl Component for Clouds {
                         .iter()
                         .map(|values: &Vec<(u8,u8)>| html! {
                             <svg
-                                x={format!("{}%", values[0].0)}
-                                y={format!("{}%", values[0].1)}
+                                y={format!("{}%", values[0].1 * values[1].1 % 100)}
                                 width="300"
                                 height="150"
-                                version="1.0">{
+                                version="1.0">
+                                <animate
+                                    attributeName="x"
+                                    values={format!("0%;100%;0%")}
+                                    dur="360s"
+                                    repeatCount="indefinite" />
+                                {
                                 values
                                     .iter()
                                     .map(|(value_1, value_2): &(u8, u8)| html! {

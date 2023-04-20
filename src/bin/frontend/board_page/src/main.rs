@@ -76,7 +76,12 @@ impl Component for ClientGame {
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            Self::Message::Response(error) => {
+                web_sys::console::log_1(&JsValue::from(format!("{}", error)));
+            }
+        }
         true
     }
 
@@ -89,8 +94,18 @@ impl Component for ClientGame {
                 <div class={classes!("ocean_setting", if self.client_window.day { "ocean_day" } else { "ocean_night" })}>
                     <Board
                         access_key={self.access_message.clone()}
-                        player_id_key={self.client_window.player_id_key.clone().unwrap()}
-                        player_id_tag={self.client_window.player_id_tag.clone().unwrap()}
+                        player_id_key={self.client_window.player_id_key.clone().unwrap_or_else(|| {
+                            _ctx.link().send_message(Self::Message::Response(
+                                ClientError::from(file!(), "view(): could not unwrap player_id_key")
+                            ));
+                            "".to_string()
+                        })}
+                        player_id_tag={self.client_window.player_id_tag.clone().unwrap_or_else(|| {
+                            _ctx.link().send_message(Self::Message::Response(
+                                ClientError::from(file!(), "view(): could not unwrap player_id_tag")
+                            ));
+                            "".to_string()
+                        })}
                         game_number={self.game_number} />
                 </div>
             </div>
@@ -100,15 +115,21 @@ impl Component for ClientGame {
 
 impl ClientGame {
     fn retreive_game_number(client_window: &ClientWindow) -> Result<u32, ClientError> {
-        Regex::new(r"\d+").unwrap().find(
+        Regex::new(r"\d+")
+            .map_err(|error: _| {
+                ClientError::from(file!(), &format!("retreive_game_number(): could not create new regex value: {}", error))
+            })?
+            .find(
             Regex::new(r"game/\d+")
-                .unwrap()
+                .map_err(|error: _| {
+                    ClientError::from(file!(), &format!("retreive_game_number(): could not create new regex value: {}", error))
+                })?
                 .find(&client_window.window.location().href().map_err(|error: JsValue| {
                     ClientError::from(file!(), &format!("retreive_game_number(): failed to get window location: {:?}", error))
                 })?)
-                .ok_or(ClientError::from(file!(), &format!("retreive_game_number(): failed to conduct regex operation")))?
+                .ok_or(ClientError::from(file!(), "retreive_game_number(): failed to conduct regex operation"))?
                 .as_str(),
-        ).ok_or(ClientError::from(file!(), &"retreive_game_number(): regex did not find any matching patterns for game_id within the url".to_string()))?
+        ).ok_or(ClientError::from(file!(), "retreive_game_number(): regex did not find any matching patterns for game_id within the url"))?
         .as_str()
         .parse::<u32>()
         .map_err(|error: _|{

@@ -114,9 +114,9 @@ impl Component for Menu {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
-                <div class={"background"}>
+                <div class="background">
                     if self.client_window.day {
-                        <Clouds max_clouds={5} log={false} day={self.client_window.day} />
+                        <Clouds max_clouds={10} log={false} day={self.client_window.day} />
                         <div class={classes!("main_screen_ship")}>
                             <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
