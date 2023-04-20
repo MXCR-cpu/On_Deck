@@ -3,7 +3,7 @@ use yew::{html, Component, Context, Properties, Callback};
 
 const DONATION_MESSAGE: &str =
     "Although I am not accepting donations right now, just know that I respect and appreciate your consideration.\n\n\n - MXCR_cpu -";
-const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/Battleship";
+const GITHUB_LINK: &str = "https://github.com/MXCR-cpu/OnDeck";
 const INFORMATION: &str =
     "Personal Website as well as explanation of tech stack will be made available in the future";
 
