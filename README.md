@@ -1,5 +1,4 @@
 # On Deck
-*Future svg Image*!
 ![](./src/bin/frontend/extra_files/Github_Ship.svg)
 
 ## Purpose
