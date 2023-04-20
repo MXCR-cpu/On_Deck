@@ -88,6 +88,7 @@ impl Component for Stars {
 
 pub struct Clouds {
     clouds: Vec<Vec<(u8, u8)>>,
+    positions: Vec<(bool, u8, u8, u8)>,
 }
 
 pub enum CloudsMsg {
@@ -97,7 +98,6 @@ pub enum CloudsMsg {
 #[derive(Properties, PartialEq)]
 pub struct CloudsProperties {
     pub max_clouds: usize,
-    pub log: bool,
     pub day: bool,
 }
 
@@ -119,13 +119,6 @@ impl Component for Clouds {
                     ),
                 )));
         });
-        if ctx.props().log {
-            ctx.link()
-                .send_message(Self::Message::Response(ClientError::from(
-                    file!(),
-                    &format!("create(): byte generation: {:?}", random_data),
-                )));
-        }
         let clouds: Vec<Vec<(u8, u8)>> = (0..ctx.props().max_clouds)
             .map(|scalar: usize| {
                 (0..7)
@@ -138,7 +131,30 @@ impl Component for Clouds {
                     .collect::<Vec<(u8, u8)>>()
             })
             .collect::<Vec<Vec<(u8, u8)>>>();
-        Self { clouds }
+        let mut positions_value: Vec<u8> = (0..ctx.props().max_clouds * 4)
+            .map(|_| 0u8)
+            .collect::<Vec<u8>>();
+        getrandom(&mut positions_value).unwrap_or_else(|error| {
+            ctx.link()
+                .send_message(Self::Message::Response(ClientError::from(
+                    file!(),
+                    &format!(
+                        "create(): getrandom failed to perform byte randomization: {}",
+                        error
+                    ),
+                )));
+        });
+        let positions: Vec<(bool, u8, u8, u8)> = (0..ctx.props().max_clouds)
+            .map(|index: usize| {
+                (
+                    positions_value[3 * index] % 100 > 50,
+                    positions_value[3 * index + 1] % 100,
+                    positions_value[3 * index + 2] % 100,
+                    positions_value[3 * index + 3] % 100,
+                )
+            })
+            .collect::<Vec<(bool, u8, u8, u8)>>();
+        Self { clouds, positions }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -151,6 +167,7 @@ impl Component for Clouds {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let mut index: i8 = -1;
         html! {
             <svg
                 width="100%"
@@ -164,45 +181,61 @@ impl Component for Clouds {
                 {
                     self.clouds
                         .iter()
-                        .map(|values: &Vec<(u8,u8)>| html! {
-                            <svg
-                                y={format!("{}%", values[0].1 * values[1].1 % 100)}
-                                width="300"
-                                height="150"
-                                version="1.0">
-                                <animate
-                                    attributeName="x"
-                                    values={format!("0%;100%;0%")}
-                                    dur="360s"
-                                    repeatCount="indefinite" />
-                                {
-                                values
-                                    .iter()
-                                    .map(|(value_1, value_2): &(u8, u8)| html! {
-                                        <rect
-                                            width="50%"
-                                            height="25%"
-                                            rx="10"
-                                            x={format!("{}%", value_1)}
-                                            y={format!("{}%", value_2)}
-                                            style={
-                                                if ctx.props().day {
-                                                    "
-                                                    fill: lightgrey;
-                                                    fill-opacity: 0.5;
-                                                    overflow: visible;
-                                                    "
-                                                } else {
-                                                    "
-                                                    fill: darkgrey;
-                                                    fill-opacity: 0.1;
-                                                    overflow: visible;
-                                                    "
-                                                }
-                                            }/>
-                                    })
-                                .collect::<Html>()
-                            }</svg>
+                        .map(|values: &Vec<(u8,u8)>| {
+                            index += 1;
+                             html! {
+                                <svg
+                                    y={format!("{}%", self.positions[index as usize].3)}
+                                    width="300"
+                                    height="150"
+                                    version="1.0">
+                                    <animate
+                                        attributeName="x"
+                                        values={format!("{}%;{}%;{}%;{}%;{}%",
+                                            self.positions[index as usize].1,
+                                            if self.positions[index as usize].0 {
+                                                100
+                                            } else {
+                                                0
+                                            },
+                                            self.positions[index as usize].2,
+                                            if self.positions[index as usize].0 {
+                                                0
+                                            } else {
+                                                100
+                                            },
+                                            self.positions[index as usize].1)}
+                                        dur="360s"
+                                        repeatCount="indefinite" />
+                                    {
+                                    values
+                                        .iter()
+                                        .map(|(value_1, value_2): &(u8, u8)| html! {
+                                            <rect
+                                                width="50%"
+                                                height="25%"
+                                                rx="10"
+                                                x={format!("{}%", value_1)}
+                                                y={format!("{}%", value_2)}
+                                                style={
+                                                    if ctx.props().day {
+                                                        "
+                                                        fill: lightgrey;
+                                                        fill-opacity: 0.5;
+                                                        overflow: visible;
+                                                        "
+                                                    } else {
+                                                        "
+                                                        fill: darkgrey;
+                                                        fill-opacity: 0.1;
+                                                        overflow: visible;
+                                                        "
+                                                    }
+                                                }/>
+                                        })
+                                    .collect::<Html>()
+                                }</svg>
+                            }
                         })
                         .collect::<Html>()
                 }
