@@ -3,6 +3,7 @@ use navbar_component::Navbar;
 use panel_component::Pages;
 use panel_component::Panel;
 use utils_files::request::get_request;
+use utils_files::sky::Clouds;
 use utils_files::sky::Stars;
 use utils_files::web_error::ClientError;
 use utils_files::window_state::ClientWindow;
@@ -12,7 +13,6 @@ use yew::prelude::*;
 
 mod navbar_component;
 mod panel_component;
-
 
 #[allow(dead_code)]
 pub struct Menu {
@@ -116,11 +116,15 @@ impl Component for Menu {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
                 <div class={"background"}>
                     if self.client_window.day {
+                        <Clouds max_clouds={5} log={false} day={self.client_window.day} />
                         <div class={classes!("main_screen_ship")}>
                             <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
                     } else {
-                        <Stars max_stars={200} star_size={2} log={false} />
+                        <svg width="100%" height="100%">
+                            <Clouds max_clouds={5} log={false} day={self.client_window.day} />
+                            <Stars max_stars={200} star_size={2} log={false} />
+                        </svg>
                         <div class={classes!("main_screen_ship", "ship_night")}>
                             <img src={format!("{}/extra_files/Menu_Ship_Night.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
