@@ -28,13 +28,13 @@
 	- [ ] Graphics Adjuster (Stars, Clouds, Blur, Animations)
 - [ ] Game Assets (SVG)
 	- [ ] Tab favicon image
-	- [ ] Github image
+	- [X] Github image
 	- [ ] In-game ship assets
-		- [ ] Day
+		- [X] Day
 		- [ ] Night
 	- [ ] Optional
 		- [ ] Planes
-		- [ ] Clouds
+		- [X] Clouds
 - [ ] Configure usability for smaller screens
 - [ ] Additional Paper Logs
 	- [ ] DOCUMENTATION
