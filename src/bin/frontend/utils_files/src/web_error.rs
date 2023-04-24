@@ -1,4 +1,6 @@
+use std::ffi::OsStr;
 use std::fmt;
+use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct ClientError {
@@ -12,13 +14,35 @@ impl ClientError {
 
     pub fn from(current_file: &str, new_error: &str) -> Self {
         let mut stack = Vec::new();
-        stack.push(format!("{}: {}", current_file, new_error));
+        let current_file_path_buf: String = PathBuf::from(current_file)
+            .iter()
+            .rev()
+            .enumerate()
+            .filter(|(index, _): &(usize, &OsStr)| index < &3)
+            .collect::<Vec<(usize, &OsStr)>>()
+            .iter()
+            .rev()
+            .map(|(_, value): &(usize, &OsStr)| value.to_str().unwrap().to_owned())
+            .collect::<Vec<String>>()
+            .join("/");
+        stack.push(format!("{}: {}", current_file_path_buf, new_error));
         Self { stack }
     }
 
     pub fn push(&self, current_file: &str, new_error: &str) -> Self {
         let mut stack: Vec<String> = self.stack.clone();
-        stack.push(format!("{}: {}", current_file, new_error));
+        let current_file_path_buf: String = PathBuf::from(current_file)
+            .iter()
+            .rev()
+            .enumerate()
+            .filter(|(index, _): &(usize, &OsStr)| index < &3)
+            .collect::<Vec<(usize, &OsStr)>>()
+            .iter()
+            .rev()
+            .map(|(_, value): &(usize, &OsStr)| value.to_str().unwrap().to_owned())
+            .collect::<Vec<String>>()
+            .join("/");
+        stack.push(format!("{}: {}", current_file_path_buf, new_error));
         Self { stack }
     }
 }
