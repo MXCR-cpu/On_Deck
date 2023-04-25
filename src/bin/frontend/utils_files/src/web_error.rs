@@ -2,9 +2,9 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ClientError {
-    stack: Vec<String>,
+    pub stack: Vec<String>,
 }
 
 impl ClientError {
@@ -14,24 +14,20 @@ impl ClientError {
 
     pub fn from(current_file: &str, new_error: &str) -> Self {
         let mut stack = Vec::new();
-        let current_file_path_buf: String = PathBuf::from(current_file)
-            .iter()
-            .rev()
-            .enumerate()
-            .filter(|(index, _): &(usize, &OsStr)| index < &3)
-            .collect::<Vec<(usize, &OsStr)>>()
-            .iter()
-            .rev()
-            .map(|(_, value): &(usize, &OsStr)| value.to_str().unwrap().to_owned())
-            .collect::<Vec<String>>()
-            .join("/");
+        let current_file_path_buf: String = Self::shorten_path(current_file);
         stack.push(format!("{}: {}", current_file_path_buf, new_error));
         Self { stack }
     }
 
     pub fn push(&self, current_file: &str, new_error: &str) -> Self {
         let mut stack: Vec<String> = self.stack.clone();
-        let current_file_path_buf: String = PathBuf::from(current_file)
+        let current_file_path_buf: String = Self::shorten_path(current_file);
+        stack.push(format!("{}: {}", current_file_path_buf, new_error));
+        Self { stack }
+    }
+
+    fn shorten_path(file_path: &str) -> String {
+        PathBuf::from(file_path)
             .iter()
             .rev()
             .enumerate()
@@ -41,9 +37,7 @@ impl ClientError {
             .rev()
             .map(|(_, value): &(usize, &OsStr)| value.to_str().unwrap().to_owned())
             .collect::<Vec<String>>()
-            .join("/");
-        stack.push(format!("{}: {}", current_file_path_buf, new_error));
-        Self { stack }
+            .join("/")
     }
 }
 
