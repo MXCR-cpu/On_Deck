@@ -10,6 +10,7 @@
 	--board_height: 400px;
 	--battlefield_padding: 100px;
 	--day_sky_color: #00B5E2;
+	--day_sky_color_end: #007E9E;
 	--night_sky_color: #13294B;
 	--day_ocean_color: #0065C4;
 	--night_ocean_color: #08101c;
@@ -119,6 +120,48 @@ html {
 	text-decoration: none !important;
 }
 
+/* Settings Panel */
+#settings_base {
+	padding: 5px;
+	border-radius: var(--standard_radius);
+	background-color: var(--button_color_dormant);
+}
+
+#settings_form {
+	padding: var(--panel_spacing);
+	list-style-type: circle;
+	color: white;
+	overflow: hidden;
+}
+
+#player_id {
+	position: absolute;
+	left: 70%;
+	color: white;
+	border-color: rgba(0,0,0,0);
+	border-radius: var(--standard_radius);
+	font: 16px "Helvetica", "Arial", "sans-serif";
+	background-color: var(--panel_color_background);
+	margin: 0px;
+}
+
+#settings_apply {
+	padding-top: var(--panel_spacing);
+}
+
+#settings_apply > button {
+	padding: 10px;
+	font-size: 12pt;
+	color: white;
+	border-color: transparent !important;
+	background-color: var(--button_color_dormant);
+	border-radius: var(--standard_radius) !important;
+}
+
+#settings_apply > button:hover {
+	background-color: var(--button_color_hovered);
+}
+
 .background {
 	position: fixed;
 	height: 100%;
@@ -134,12 +177,12 @@ html {
 	width: 100%;
 	top: 0%;
 	left: 0%;
-	transition: background-color 3s ease;
+	/* transition: background-color 3s ease; */
 	overflow: hidden;
 }
 
 .sky_day {
-	background-color: var(--day_sky_color);
+	background: linear-gradient(0deg, var(--day_sky_color) 50%, var(--day_sky_color_end));
 }
 
 .sky_night {
