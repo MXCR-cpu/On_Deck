@@ -17,12 +17,28 @@ mod tests {
                     ClientError::from(file!(), "This is a test error using &str")
                 )
             );
+
             assert_eq!(
                 "tests/web_error_test.rs: This is a test error using String",
                 format!(
                     "{}",
                     ClientError::from(file!(), &"This is a test error using String".to_string())
                 )
+            );
+        }
+
+        #[test]
+        fn test_push() {
+            assert_eq!(
+                "tests/web_error_test.rs: single push test",
+                format!("{}", ClientError::new().push(file!(), "single push test"))
+            );
+            assert_eq!(
+                "tests/web_error_test.rs: final push test\n\ttests/web_error_test.rs: initial push test",
+                format!("{}",
+                        ClientError::new()
+                            .push(file!(), "initial push test")
+                            .push(file!(), "final push test"))
             );
         }
     }
