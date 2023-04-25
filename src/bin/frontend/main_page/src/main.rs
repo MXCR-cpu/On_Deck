@@ -17,14 +17,13 @@ mod panel_component;
 #[allow(dead_code)]
 pub struct Menu {
     client_window: ClientWindow,
-    settings: bool,
     page_selection: Pages,
 }
 
 #[derive(Clone)]
 pub enum MenuMsg {
     ChangeDayState,
-    Settings,
+    ChangePage,
     ReceivedId((String, String)),
     Response(ClientError),
     None,
@@ -61,7 +60,6 @@ impl Component for Menu {
         });
         Self {
             client_window,
-            settings: false,
             page_selection: Pages::Main,
         }
     }
@@ -82,7 +80,7 @@ impl Component for Menu {
                     )
                     .unwrap();
             }
-            Self::Message::Settings => {
+            Self::Message::ChangePage => {
                 self.page_selection = match self.page_selection {
                     Pages::Main => Pages::Settings,
                     Pages::Settings => Pages::Main,
@@ -116,7 +114,7 @@ impl Component for Menu {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
                 <div class="background">
                     if self.client_window.day {
-                        <Clouds max_clouds={10} day={self.client_window.day} />
+                        <Clouds max_clouds={5} day={self.client_window.day} />
                         <div class={classes!("main_screen_ship")}>
                             <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
@@ -133,9 +131,9 @@ impl Component for Menu {
                 <Navbar
                     window={self.client_window.window.clone()}
                     day={self.client_window.day}
-                    settings={self.settings}
+                    page={self.page_selection.clone()}
                     change_day={ctx.link().callback(move |_| Self::Message::ChangeDayState)}
-                    change_setting={ctx.link().callback(move |_| Self::Message::Settings)} />
+                    change_page={ctx.link().callback(move |_| Self::Message::ChangePage)} />
                 <Panel
                     page_selection={self.page_selection.clone()}
                     player_id_tag={self.client_window.player_id_tag.clone().unwrap_or("".to_string())} />

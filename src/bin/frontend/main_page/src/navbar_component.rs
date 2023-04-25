@@ -1,4 +1,5 @@
 use web_sys::Window;
+use crate::panel_component::Pages;
 use yew::{html, Component, Context, Properties, Callback};
 
 const DONATION_MESSAGE: &str =
@@ -19,9 +20,9 @@ pub enum NavbarMsg {
 pub struct NavbarProp {
     pub window: Window,
     pub day: bool,
-    pub settings: bool,
+    pub page: Pages,
     pub change_day: Callback<web_sys::MouseEvent>,
-    pub change_setting: Callback<web_sys::MouseEvent>,
+    pub change_page: Callback<web_sys::MouseEvent>,
 }
 
 impl Component for Navbar {
@@ -67,8 +68,11 @@ impl Component for Navbar {
                 <button class={"button_col_4"} onclick={ctx.props().change_day.clone()}>{
                     if ctx.props().day { "☀️" } else { "🌙" }
                 }</button>
-                <button class={"button_col_5"} onclick={ctx.props().change_setting.clone()}>{
-                    if ctx.props().settings { "🚀" } else { "⚙️" }
+                <button class={"button_col_5"} onclick={ctx.props().change_page.clone()}>{
+                    match ctx.props().page {
+                        Pages::Main => "⚙️",
+                        Pages::Settings => "🚀",
+                    }
                 }</button>
             </div>
         }
