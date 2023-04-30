@@ -166,18 +166,35 @@ impl Component for Panel {
                     <h2 class={classes!("panel_header", "font")}>{
                         "Settings"
                     }</h2>
-                    <form action="" class={"links_holder"}>
-                        <label
-                            for="player_id"
-                            class={classes!("links", "font")}>{
-                                "Player Id:"
-                            }</label>
-                        <input
-                            type="text"
-                            id="player_id"
-                            name="fname"
-                            value={ctx.props().player_id_tag.clone()} />
-                    </form>
+                    <div id={"settings_base"} class={"font"}>
+                        <form action="" id={"settings_form"}>
+                            <label
+                                for="player_id"
+                                class={classes!("links", "font")}>{
+                                    "Player Id:"
+                                }</label>
+                            <input
+                                type="text"
+                                id="player_id"
+                                name="fname"
+                                value={ctx.props().player_id_tag.clone()} />
+                            <label
+                                for="animation_level"
+                                class={classes!("links", "font")}>{
+                                    "Animation Level:"
+                                }</label>
+                            <input
+                                type="radio"
+                                id="animation_level"
+                                name="animation_level"
+                                value={"d"} />
+                        </form>
+                    </div>
+                    <div id={"settings_apply"} class={"font"}>
+                        <button>{
+                            "Apply"
+                        }</button>
+                    </div>
                 </div>
             },
         }
