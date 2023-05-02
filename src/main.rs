@@ -7,7 +7,7 @@ use crate::database::{
 };
 use battleship::keys::PlayerKeys;
 use battleship::start;
-use database::json_database_get_simple;
+use database::{json_database_get_simple, database_rename};
 use ecies::decrypt;
 use interact::link::{GameList, GameListEntry};
 use interact::site::SITE_LINK;
@@ -80,6 +80,14 @@ async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(String, Stri
         .await
         .unwrap();
     Json((player_index, player_keys.public_key_string()))
+}
+
+#[post("/change_player_id", format = "json", data = "<player_id_change>")]
+async fn change_player_id(mut rds: Connection<RedisDatabase>, player_id_change: Json<Vec<String>>) {
+    database_rename(&player_id_change.into_inner(), &mut rds)
+        .await
+        .unwrap();
+    return;
 }
 
 #[post("/start", format = "json", data = "<players_obj>")]
@@ -358,7 +366,7 @@ async fn fire(
         .unwrap();
     if game_state.shot_list
         ^ (2_u32
-            .checked_pow(game_state.number_of_players  as u32)
+            .checked_pow(game_state.number_of_players as u32)
             .unwrap()
             - 1)
         == 0
@@ -414,6 +422,7 @@ fn rocket() -> _ {
             routes![
                 intercept_start,
                 start_game,
+                change_player_id,
                 get_player_id,
                 get_active_game_links
             ],
