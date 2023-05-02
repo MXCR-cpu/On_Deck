@@ -170,27 +170,32 @@ impl Component for Panel {
                         <form action="" id={"settings_form"}>
                             <label
                                 for="player_id"
-                                class={classes!("links", "font")}>{
+                                class="settings_label">{
                                     "Player Id:"
                                 }</label>
                             <input
                                 type="text"
                                 id="player_id"
+                                class="settings_option"
                                 name="fname"
                                 value={ctx.props().player_id_tag.clone()} />
+                            <br/><br/><br/>
+                            // new code
                             <label
                                 for="animation_level"
-                                class={classes!("links", "font")}>{
-                                    "Animation Level:"
-                                }</label>
-                            <input
-                                type="radio"
+                                class="settings_label">{
+                                "Animation Level:"
+                            }</label>
+                            <select
                                 id="animation_level"
-                                name="animation_level"
-                                value={"d"} />
+                                class="settings_option">
+                                <option value="none">{ "None" }</option>
+                                <option value="low">{ "Low" }</option>
+                                <option value="high">{ "High" }</option>
+                            </select>
                         </form>
                     </div>
-                    <div id={"settings_apply"} class={"font"}>
+                    <div id="settings_apply" class="font">
                         <button>{
                             "Apply"
                         }</button>
