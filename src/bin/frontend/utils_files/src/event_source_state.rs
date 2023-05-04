@@ -1,8 +1,5 @@
 use gloo_events::EventListener;
 use js_sys::Function;
-// use wasm_bindgen::prelude::*;
-// use wasm_bindgen::JsValue;
-// use web_sys::console::log_1;
 use web_sys::Event;
 use web_sys::EventSource;
 

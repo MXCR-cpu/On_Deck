@@ -60,3 +60,4 @@ impl fmt::Display for ClientError {
         )
     }
 }
+

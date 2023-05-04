@@ -36,7 +36,6 @@ impl PlayerKeys {
     }
 
     pub fn public_key_string(&self) -> String {
-        // general_purpose::STANDARD.encode(&self.encryption_key)
         serde_json::to_string(&self.encryption_key).unwrap()
     }
 }
