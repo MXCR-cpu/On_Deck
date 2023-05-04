@@ -24,6 +24,15 @@ impl SettingsTrait for String {
     }
 }
 
+fn convert_to_animation_state(value: u8) -> String {
+    match value {
+        2 => "High".to_string(),
+        1 => "Low".to_string(),
+        0 => "None".to_string(),
+        _ => "None".to_string(),
+    }
+}
+
 #[derive(PartialEq)]
 pub struct ClientWindow {
     pub window: web_sys::Window,
@@ -116,7 +125,7 @@ impl ClientWindow {
     pub fn set_animation_level(&mut self, new_animation_level: u8) -> Result<(), ClientError> {
         self.animation_level = new_animation_level;
         self.local_storage
-            .set_item("player_animation_level", &new_animation_level.to_string())
+            .set_item("player_animation_level", &convert_to_animation_state(new_animation_level))
             .map_err(|error: _| {
                 ClientError::from(
                     file!(),
