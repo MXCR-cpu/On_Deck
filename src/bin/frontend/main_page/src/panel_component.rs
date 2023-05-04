@@ -3,6 +3,7 @@ use interact::{
     site::SITE_LINK,
 };
 use utils_files::{
+    animation_level::AnimationLevel,
     event_source_state::EventSourceState,
     request::{get_request, send_player_amount_update},
     web_error::ClientError,
@@ -15,13 +16,6 @@ use yew::{classes, html, Callback, Component, Context, Html, NodeRef, Properties
 pub enum Pages {
     Main,
     Settings,
-}
-
-#[derive(Clone, PartialEq)]
-pub enum AnimationLevel {
-    None,
-    Low,
-    High,
 }
 
 pub struct Panel {
@@ -51,7 +45,7 @@ pub struct PanelProp {
     pub page_selection: Pages,
     pub player_id_tag: String,
     pub change_player_id: Callback<String>,
-    pub change_animation_level: Callback<u8>,
+    pub change_animation_level: Callback<AnimationLevel>,
 }
 
 impl Component for Panel {
@@ -121,11 +115,7 @@ impl Component for Panel {
                 }
                 ctx.props()
                     .change_animation_level
-                    .emit(match self.animation_level {
-                        AnimationLevel::High => 2,
-                        AnimationLevel::Low => 1,
-                        AnimationLevel::None => 0,
-                    });
+                    .emit(self.animation_level);
             }
             Self::Message::Send(number_of_players) => {
                 ctx.link().send_future(async move {

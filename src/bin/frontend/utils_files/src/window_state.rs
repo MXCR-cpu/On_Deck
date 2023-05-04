@@ -1,10 +1,12 @@
+use crate::animation_level::AnimationLevel;
+use crate::animation_level::FromStringify;
+use crate::animation_level::ToStringify;
 use crate::web_error::ClientError;
 use web_sys::Storage;
 use web_sys::Window;
 
 trait SettingsTrait {
     fn get_day_state(&self) -> bool;
-    fn get_animation_level_state(&self) -> u8;
 }
 
 impl SettingsTrait for String {
@@ -13,23 +15,6 @@ impl SettingsTrait for String {
             "day" => true,
             _ => false,
         }
-    }
-
-    fn get_animation_level_state(&self) -> u8 {
-        match self.as_str() {
-            "High" => 2,
-            "Low" => 1,
-            _ => 0,
-        }
-    }
-}
-
-fn convert_to_animation_state(value: u8) -> String {
-    match value {
-        2 => "High".to_string(),
-        1 => "Low".to_string(),
-        0 => "None".to_string(),
-        _ => "None".to_string(),
     }
 }
 
@@ -40,7 +25,7 @@ pub struct ClientWindow {
     pub player_id_tag: Option<String>,
     pub player_id_key: Option<String>,
     pub settings: Option<String>,
-    pub animation_level: u8,
+    pub animation_level: AnimationLevel,
     pub day: bool,
 }
 
@@ -51,9 +36,9 @@ impl ClientWindow {
         let player_id_tag: Option<String> = Self::get_storage_item(&local_storage, "player_id_tag");
         let player_id_key: Option<String> = Self::get_storage_item(&local_storage, "player_id_key");
         let settings: Option<String> = Self::get_storage_item(&local_storage, "player_settings");
-        let animation_level: u8 =
-            Self::get_stored_storage_item(&local_storage, "player_animation_level", "high")?
-                .get_animation_level_state();
+        let animation_level: AnimationLevel =
+            Self::get_stored_storage_item(&local_storage, "player_animation_level", "High")?
+                .convert_from_string();
         let day: bool =
             Self::get_stored_storage_item(&local_storage, "day_setting", "day")?.get_day_state();
         Ok(Self {
@@ -122,14 +107,23 @@ impl ClientWindow {
         Ok(())
     }
 
-    pub fn set_animation_level(&mut self, new_animation_level: u8) -> Result<(), ClientError> {
-        self.animation_level = new_animation_level;
+    pub fn set_animation_level(
+        &mut self,
+        new_animation_level: AnimationLevel,
+    ) -> Result<(), ClientError> {
+        self.animation_level = new_animation_level.clone();
         self.local_storage
-            .set_item("player_animation_level", &convert_to_animation_state(new_animation_level))
+            .set_item(
+                "player_animation_level",
+                &new_animation_level.convert_to_string(),
+            )
             .map_err(|error: _| {
                 ClientError::from(
                     file!(),
-                    &format!("new(): Could not update player_animation_level value: {:?}", error),
+                    &format!(
+                        "new(): Could not update player_animation_level value: {:?}",
+                        error
+                    ),
                 )
             })?;
         Ok(())
