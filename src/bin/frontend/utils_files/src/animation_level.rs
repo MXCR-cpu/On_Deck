@@ -1,3 +1,5 @@
+use std::convert::From;
+
 #[derive(Clone, PartialEq)]
 pub enum AnimationLevel {
     None,
@@ -30,6 +32,16 @@ impl FromStringify for String {
             "Low" => AnimationLevel::Low,
             "None" => AnimationLevel::None,
             _ => AnimationLevel::None,
+        }
+    }
+}
+
+impl From<AnimationLevel> for usize {
+    fn from(item: AnimationLevel) -> Self {
+        match item.clone() {
+            AnimationLevel::High => 2,
+            AnimationLevel::Low => 1,
+            AnimationLevel::None => 0,
         }
     }
 }
