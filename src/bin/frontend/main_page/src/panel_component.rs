@@ -46,6 +46,8 @@ pub struct PanelProp {
     pub player_id_tag: String,
     pub change_player_id: Callback<String>,
     pub change_animation_level: Callback<AnimationLevel>,
+    pub reload_page: Callback<()>,
+    pub log: bool,
 }
 
 impl Component for Panel {
@@ -84,11 +86,13 @@ impl Component for Panel {
                 }
             }
             Self::Message::SelectAnimationLevel(animation_level) => {
-                ctx.link()
-                    .send_message(Self::Message::Response(ClientError::from(
-                        file!(),
-                        "update(): AnimationLevel Changed",
-                    )));
+                if ctx.props().log {
+                    ctx.link()
+                        .send_message(Self::Message::Response(ClientError::from(
+                            file!(),
+                            "update(): AnimationLevel Changed",
+                        )));
+                }
                 self.animation_level = animation_level;
             }
             Self::Message::ApplySettings => {
@@ -97,25 +101,28 @@ impl Component for Panel {
                     .cast::<HtmlInputElement>()
                     .unwrap()
                     .value();
-                ctx.link()
-                    .send_message(Self::Message::Response(ClientError::from(
-                        file!(),
-                        &format!(
-                            "update(): {}, {}",
-                            new_player_id,
-                            match self.animation_level {
-                                AnimationLevel::High => "High",
-                                AnimationLevel::Low => "Low",
-                                AnimationLevel::None => "None",
-                            }
-                        ),
-                    )));
+                if ctx.props().log {
+                    ctx.link()
+                        .send_message(Self::Message::Response(ClientError::from(
+                            file!(),
+                            &format!(
+                                "update(): {}, {}",
+                                new_player_id,
+                                match self.animation_level {
+                                    AnimationLevel::High => "High",
+                                    AnimationLevel::Low => "Low",
+                                    AnimationLevel::None => "None",
+                                }
+                            ),
+                        )));
+                }
                 if !new_player_id.is_empty() {
                     ctx.props().change_player_id.emit(new_player_id);
                 }
                 ctx.props()
                     .change_animation_level
                     .emit(self.animation_level.clone());
+                ctx.props().reload_page.emit(());
             }
             Self::Message::Send(number_of_players) => {
                 ctx.link().send_future(async move {

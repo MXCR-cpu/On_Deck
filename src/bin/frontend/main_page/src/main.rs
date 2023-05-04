@@ -28,6 +28,7 @@ pub enum MenuMsg {
     ChangePage,
     ChangePlayerId(String),
     ChangeAnimationLevel(AnimationLevel),
+    ReloadPage,
     ReceivedId((String, String)),
     Response(ClientError),
     None,
@@ -92,16 +93,25 @@ impl Component for Menu {
             }
             Self::Message::ChangePlayerId(new_player_id) => {
                 match self.client_window.set_player_id_tag(new_player_id) {
-                    Ok(()) => {}
+                    Ok(()) => (),
                     Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
                 };
             }
             Self::Message::ChangeAnimationLevel(new_level) => {
                 match self.client_window.set_animation_level(new_level) {
-                    Ok(()) => {}
+                    Ok(()) => (),
                     Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
                 }
             }
+            Self::Message::ReloadPage => match self.client_window.window.location().reload() {
+                Ok(()) => (),
+                Err(error) => _ctx
+                    .link()
+                    .send_message(Self::Message::Response(ClientError::from(
+                        file!(),
+                        &format!("update(): Failed to reload page: {:?}", error),
+                    ))),
+            },
             Self::Message::ReceivedId(player_id) => {
                 self.client_window.player_id_tag = Some(player_id.0);
                 self.client_window
@@ -157,7 +167,9 @@ impl Component for Menu {
                     page_selection={self.page_selection.clone()}
                     player_id_tag={self.client_window.player_id_tag.clone().unwrap_or("".to_string())}
                     change_player_id={ctx.link().callback(move |new_player_id: String| Self::Message::ChangePlayerId(new_player_id))}
-                    change_animation_level={ctx.link().callback(move |animation_level: AnimationLevel| Self::Message::ChangeAnimationLevel(animation_level))} />
+                    change_animation_level={ctx.link().callback(move |animation_level: AnimationLevel| Self::Message::ChangeAnimationLevel(animation_level))}
+                    reload_page={ctx.link().callback(move |_| Self::Message::ReloadPage)}
+                    log={false} />
             </div>
         }
     }
