@@ -115,7 +115,7 @@ impl Component for Panel {
                 }
                 ctx.props()
                     .change_animation_level
-                    .emit(self.animation_level);
+                    .emit(self.animation_level.clone());
             }
             Self::Message::Send(number_of_players) => {
                 ctx.link().send_future(async move {
