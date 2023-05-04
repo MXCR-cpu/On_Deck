@@ -134,7 +134,13 @@ html {
 	overflow: hidden;
 }
 
-#player_id {
+.settings_label {
+	font-size: 12pt;
+	color: white !important;
+	text-decoration: none !important;
+}
+
+.settings_option {
 	position: absolute;
 	left: 70%;
 	color: white;
@@ -143,13 +149,19 @@ html {
 	font: 16px "Helvetica", "Arial", "sans-serif";
 	background-color: var(--panel_color_background);
 	margin: 0px;
+	padding-left: var(--standard_padding);
+	padding-right: var(--standard_padding);
 }
 
 #settings_apply {
-	padding-top: var(--panel_spacing);
+	padding: var(--panel_spacing);
+	color: white;
+	overflow: hidden;
 }
 
 #settings_apply > button {
+	position: absolute;
+	right: 5%;
 	padding: 10px;
 	font-size: 12pt;
 	color: white;

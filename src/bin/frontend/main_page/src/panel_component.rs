@@ -8,8 +8,8 @@ use utils_files::{
     web_error::ClientError,
 };
 use wasm_bindgen::JsValue;
-use web_sys::{FocusEvent, HtmlInputElement};
-use yew::{classes, html, Component, Context, Html, NodeRef, Properties};
+use web_sys::HtmlInputElement;
+use yew::{classes, html, Callback, Component, Context, Html, NodeRef, Properties};
 
 #[derive(Clone, PartialEq)]
 pub enum Pages {
@@ -36,8 +36,7 @@ pub struct Panel {
 pub enum PanelMsg {
     AddPlayer,
     SubPlayer,
-    ChangePlayerId,
-    ChangeAnimationLevel(AnimationLevel),
+    SelectAnimationLevel(AnimationLevel),
     ApplySettings,
     Send(u8),
     AwaitUpdate,
@@ -51,6 +50,8 @@ pub enum PanelMsg {
 pub struct PanelProp {
     pub page_selection: Pages,
     pub player_id_tag: String,
+    pub change_player_id: Callback<String>,
+    pub change_animation_level: Callback<u8>,
 }
 
 impl Component for Panel {
@@ -88,20 +89,7 @@ impl Component for Panel {
                     self.player_amount_selection -= 1;
                 }
             }
-            Self::Message::ChangePlayerId => {
-                ctx.link()
-                    .send_message(Self::Message::Response(ClientError::from(
-                        file!(),
-                        &format!(
-                            "new player id: {}",
-                            self.player_id_ref
-                                .cast::<HtmlInputElement>()
-                                .unwrap()
-                                .value()
-                        ),
-                    )))
-            }
-            Self::Message::ChangeAnimationLevel(animation_level) => {
+            Self::Message::SelectAnimationLevel(animation_level) => {
                 ctx.link()
                     .send_message(Self::Message::Response(ClientError::from(
                         file!(),
@@ -110,22 +98,34 @@ impl Component for Panel {
                 self.animation_level = animation_level;
             }
             Self::Message::ApplySettings => {
+                let new_player_id: String = self
+                    .player_id_ref
+                    .cast::<HtmlInputElement>()
+                    .unwrap()
+                    .value();
                 ctx.link()
                     .send_message(Self::Message::Response(ClientError::from(
                         file!(),
                         &format!(
                             "update(): {}, {}",
-                            self.player_id_ref
-                                .cast::<HtmlInputElement>()
-                                .unwrap()
-                                .value(),
+                            new_player_id,
                             match self.animation_level {
-                                AnimationLevel::None => "None",
-                                AnimationLevel::Low => "Low",
                                 AnimationLevel::High => "High",
+                                AnimationLevel::Low => "Low",
+                                AnimationLevel::None => "None",
                             }
                         ),
                     )));
+                if !new_player_id.is_empty() {
+                    ctx.props().change_player_id.emit(new_player_id);
+                }
+                ctx.props()
+                    .change_animation_level
+                    .emit(match self.animation_level {
+                        AnimationLevel::High => 2,
+                        AnimationLevel::Low => 1,
+                        AnimationLevel::None => 0,
+                    });
             }
             Self::Message::Send(number_of_players) => {
                 ctx.link().send_future(async move {
@@ -244,17 +244,17 @@ impl Component for Panel {
                                 id="animation_level"
                                 class="settings_option">
                                 <option onclick={onclick(
-                                    Self::Message::ChangeAnimationLevel(
+                                    Self::Message::SelectAnimationLevel(
                                         AnimationLevel::None))}>{
                                     "None"
                                 }</option>
                                 <option onclick={onclick(
-                                    Self::Message::ChangeAnimationLevel(
+                                    Self::Message::SelectAnimationLevel(
                                         AnimationLevel::Low))}>{
                                     "Low"
                                 }</option>
                                 <option onclick={onclick(
-                                    Self::Message::ChangeAnimationLevel(
+                                    Self::Message::SelectAnimationLevel(
                                         AnimationLevel::High))}>{
                                     "High"
                                 }</option>

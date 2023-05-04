@@ -43,14 +43,38 @@ pub async fn database_set<T: ToRedisArgs>(
     }
 }
 
-pub async fn json_database_get_simple<T: ToRedisArgs>(args: &T, rds: &mut Connection<RedisDatabase>) -> Result<String, String> {
+pub async fn database_rename(
+    args: &Vec<String>,
+    rds: &mut Connection<RedisDatabase>,
+) -> Result<(), String> {
+    match redis::cmd("RENAME")
+        .arg(args)
+        .query_async::<_, String>(&mut **rds)
+        .await
+        {
+            Ok(_) => Ok(()),
+            Err(error) => Err(format!(
+                "database.rs: database_rename(): Redis Cmd Failed to execute `RENAME` query command; {}",
+                error
+            ))
+        }
+}
+
+pub async fn json_database_get_simple<T: ToRedisArgs>(
+    args: &T,
+    rds: &mut Connection<RedisDatabase>,
+) -> Result<String, String> {
     match redis::cmd("JSON.GET")
         .arg(&args)
         .query_async::<_, String>(&mut **rds)
-        .await {
-            Ok(result) => Ok(result),
-            Err(error) => Err(format!("database.rs, 47: Redis Cmd Failed to execute `JSON.GET` query command; {}", error))
-        }
+        .await
+    {
+        Ok(result) => Ok(result),
+        Err(error) => Err(format!(
+            "database.rs, 47: Redis Cmd Failed to execute `JSON.GET` query command; {}",
+            error
+        )),
+    }
 }
 
 pub async fn json_database_get<T: ToRedisArgs, D: DeserializeOwned>(
