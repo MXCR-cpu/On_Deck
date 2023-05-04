@@ -8,7 +8,16 @@ use utils_files::{
     web_error::ClientError,
 };
 use wasm_bindgen::JsValue;
-use yew::{classes, html, Component, Context, Html, Properties};
+use yew::{
+    classes,
+    html,
+    html::onselectionchange::Event,
+    Component,
+    Context,
+    Html,
+    InputEvent,
+    Properties
+};
 
 #[derive(Clone, PartialEq)]
 pub enum Pages {
@@ -16,8 +25,17 @@ pub enum Pages {
     Settings,
 }
 
+#[derive(Clone, PartialEq)]
+pub enum AnimationLevel {
+    Off,
+    Low,
+    High,
+}
+
 pub struct Panel {
     player_amount_selection: u8,
+    animation_level: AnimationLevel,
+    player_id: String,
     links: Option<GameList>,
     event_source: EventSourceState,
 }
@@ -26,6 +44,9 @@ pub struct Panel {
 pub enum PanelMsg {
     AddPlayer,
     SubPlayer,
+    ChangePlayerId(String),
+    ChangeAnimationLevel(AnimationLevel),
+    ApplySettings,
     Send(u8),
     AwaitUpdate,
     Update(Option<Vec<GameListEntry>>),
@@ -56,6 +77,8 @@ impl Component for Panel {
         );
         Self {
             player_amount_selection: 2,
+            animation_level: AnimationLevel::High,
+            player_id: ctx.props().player_id_tag.clone(),
             links: None,
             event_source,
         }
@@ -72,6 +95,18 @@ impl Component for Panel {
                 if self.player_amount_selection > 2 {
                     self.player_amount_selection -= 1;
                 }
+            }
+            Self::Message::ChangePlayerId(new_player_id) => {
+                self.player_id = new_player_id;
+            }
+            Self::Message::ChangeAnimationLevel(animation_level) => {
+                ctx.link().send_message(
+                    Self::Message::Response(
+                        ClientError::from(file!(), "update(): AnimationLevel Changed")));
+                self.animation_level = animation_level;
+            }
+            Self::Message::ApplySettings => {
+                todo!();
             }
             Self::Message::Send(number_of_players) => {
                 ctx.link().send_future(async move {
@@ -166,8 +201,8 @@ impl Component for Panel {
                     <h2 class={classes!("panel_header", "font")}>{
                         "Settings"
                     }</h2>
-                    <div id={"settings_base"} class={"font"}>
-                        <form action="" id={"settings_form"}>
+                    <div id="settings_base" class="font">
+                        <form action="" id="settings_form">
                             <label
                                 for="player_id"
                                 class="settings_label">{
@@ -178,7 +213,10 @@ impl Component for Panel {
                                 id="player_id"
                                 class="settings_option"
                                 name="fname"
-                                value={ctx.props().player_id_tag.clone()} />
+                                value={ctx.props().player_id_tag.clone()}
+                                oninput={ctx.link().callback(|e: InputEvent| {
+                                    Self::Message::ChangePlayerId(e.data().unwrap())
+                                })} />
                             <br/><br/><br/>
                             // new code
                             <label
@@ -189,14 +227,32 @@ impl Component for Panel {
                             <select
                                 id="animation_level"
                                 class="settings_option">
-                                <option value="none">{ "None" }</option>
-                                <option value="low">{ "Low" }</option>
-                                <option value="high">{ "High" }</option>
+                                <option
+                                    value="0"
+                                    onclick={onclick(
+                                        Self::Message::Response(
+                                            ClientError::from(file!(),
+                                                "None option selected")))}
+                                    >{ "None" }</option>
+                                <option
+                                    value="1"
+                                    onclick={onclick(
+                                        Self::Message::Response(
+                                            ClientError::from(file!(),
+                                                "Low option selected")))}
+                                    >{ "Low" }</option>
+                                <option
+                                    value="2"
+                                    onclick={onclick(
+                                        Self::Message::Response(
+                                            ClientError::from(file!(),
+                                                "High option selected")))}
+                                    >{ "High" }</option>
                             </select>
                         </form>
                     </div>
                     <div id="settings_apply" class="font">
-                        <button>{
+                        <button onclick={onclick(Self::Message::ApplySettings)}>{
                             "Apply"
                         }</button>
                     </div>
