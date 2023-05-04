@@ -2,6 +2,7 @@ use interact::site::SITE_LINK;
 use navbar_component::Navbar;
 use panel_component::Pages;
 use panel_component::Panel;
+use utils_files::animation_level::AnimationLevel;
 use utils_files::request::get_request;
 use utils_files::sky::Clouds;
 use utils_files::sky::Stars;
@@ -26,7 +27,7 @@ pub enum MenuMsg {
     ChangeDayState,
     ChangePage,
     ChangePlayerId(String),
-    ChangeAnimationLevel(u8),
+    ChangeAnimationLevel(AnimationLevel),
     ReceivedId((String, String)),
     Response(ClientError),
     None,
@@ -91,13 +92,13 @@ impl Component for Menu {
             }
             Self::Message::ChangePlayerId(new_player_id) => {
                 match self.client_window.set_player_id_tag(new_player_id) {
-                    Ok(()) => {},
+                    Ok(()) => {}
                     Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
                 };
             }
             Self::Message::ChangeAnimationLevel(new_level) => {
                 match self.client_window.set_animation_level(new_level) {
-                    Ok(()) => {},
+                    Ok(()) => {}
                     Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
                 }
             }
@@ -156,7 +157,7 @@ impl Component for Menu {
                     page_selection={self.page_selection.clone()}
                     player_id_tag={self.client_window.player_id_tag.clone().unwrap_or("".to_string())}
                     change_player_id={ctx.link().callback(move |new_player_id: String| Self::Message::ChangePlayerId(new_player_id))}
-                    change_animation_level={ctx.link().callback(move |animation_level: u8| Self::Message::ChangeAnimationLevel(animation_level))} />
+                    change_animation_level={ctx.link().callback(move |animation_level: AnimationLevel| Self::Message::ChangeAnimationLevel(animation_level))} />
             </div>
         }
     }
