@@ -110,7 +110,22 @@ impl Component for Panel {
                 self.animation_level = animation_level;
             }
             Self::Message::ApplySettings => {
-                todo!();
+                ctx.link()
+                    .send_message(Self::Message::Response(ClientError::from(
+                        file!(),
+                        &format!(
+                            "update(): {}, {}",
+                            self.player_id_ref
+                                .cast::<HtmlInputElement>()
+                                .unwrap()
+                                .value(),
+                            match self.animation_level {
+                                AnimationLevel::None => "None",
+                                AnimationLevel::Low => "Low",
+                                AnimationLevel::High => "High",
+                            }
+                        ),
+                    )));
             }
             Self::Message::Send(number_of_players) => {
                 ctx.link().send_future(async move {
@@ -218,10 +233,7 @@ impl Component for Panel {
                                 id="player_id"
                                 class="settings_option"
                                 name="fname"
-                                placeholder={ctx.props().player_id_tag.clone()}
-                                onfocusout={ctx.link().callback(|_e: FocusEvent|
-                                    Self::Message::ChangePlayerId
-                                )}/>
+                                placeholder={ctx.props().player_id_tag.clone()} />
                             <br/><br/><br/>
                             <label
                                 for="animation_level"
