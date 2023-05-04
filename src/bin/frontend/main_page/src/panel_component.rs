@@ -8,16 +8,8 @@ use utils_files::{
     web_error::ClientError,
 };
 use wasm_bindgen::JsValue;
-use yew::{
-    classes,
-    html,
-    html::onselectionchange::Event,
-    Component,
-    Context,
-    Html,
-    InputEvent,
-    Properties
-};
+use web_sys::{FocusEvent, HtmlInputElement};
+use yew::{classes, html, Component, Context, Html, NodeRef, Properties};
 
 #[derive(Clone, PartialEq)]
 pub enum Pages {
@@ -27,7 +19,7 @@ pub enum Pages {
 
 #[derive(Clone, PartialEq)]
 pub enum AnimationLevel {
-    Off,
+    None,
     Low,
     High,
 }
@@ -35,7 +27,7 @@ pub enum AnimationLevel {
 pub struct Panel {
     player_amount_selection: u8,
     animation_level: AnimationLevel,
-    player_id: String,
+    player_id_ref: NodeRef,
     links: Option<GameList>,
     event_source: EventSourceState,
 }
@@ -44,7 +36,7 @@ pub struct Panel {
 pub enum PanelMsg {
     AddPlayer,
     SubPlayer,
-    ChangePlayerId(String),
+    ChangePlayerId,
     ChangeAnimationLevel(AnimationLevel),
     ApplySettings,
     Send(u8),
@@ -78,7 +70,7 @@ impl Component for Panel {
         Self {
             player_amount_selection: 2,
             animation_level: AnimationLevel::High,
-            player_id: ctx.props().player_id_tag.clone(),
+            player_id_ref: NodeRef::default(),
             links: None,
             event_source,
         }
@@ -96,13 +88,25 @@ impl Component for Panel {
                     self.player_amount_selection -= 1;
                 }
             }
-            Self::Message::ChangePlayerId(new_player_id) => {
-                self.player_id = new_player_id;
+            Self::Message::ChangePlayerId => {
+                ctx.link()
+                    .send_message(Self::Message::Response(ClientError::from(
+                        file!(),
+                        &format!(
+                            "new player id: {}",
+                            self.player_id_ref
+                                .cast::<HtmlInputElement>()
+                                .unwrap()
+                                .value()
+                        ),
+                    )))
             }
             Self::Message::ChangeAnimationLevel(animation_level) => {
-                ctx.link().send_message(
-                    Self::Message::Response(
-                        ClientError::from(file!(), "update(): AnimationLevel Changed")));
+                ctx.link()
+                    .send_message(Self::Message::Response(ClientError::from(
+                        file!(),
+                        "update(): AnimationLevel Changed",
+                    )));
                 self.animation_level = animation_level;
             }
             Self::Message::ApplySettings => {
@@ -210,15 +214,15 @@ impl Component for Panel {
                                 }</label>
                             <input
                                 type="text"
+                                ref={&self.player_id_ref}
                                 id="player_id"
                                 class="settings_option"
                                 name="fname"
-                                value={ctx.props().player_id_tag.clone()}
-                                oninput={ctx.link().callback(|e: InputEvent| {
-                                    Self::Message::ChangePlayerId(e.data().unwrap())
-                                })} />
+                                placeholder={ctx.props().player_id_tag.clone()}
+                                onfocusout={ctx.link().callback(|_e: FocusEvent|
+                                    Self::Message::ChangePlayerId
+                                )}/>
                             <br/><br/><br/>
-                            // new code
                             <label
                                 for="animation_level"
                                 class="settings_label">{
@@ -227,27 +231,21 @@ impl Component for Panel {
                             <select
                                 id="animation_level"
                                 class="settings_option">
-                                <option
-                                    value="0"
-                                    onclick={onclick(
-                                        Self::Message::Response(
-                                            ClientError::from(file!(),
-                                                "None option selected")))}
-                                    >{ "None" }</option>
-                                <option
-                                    value="1"
-                                    onclick={onclick(
-                                        Self::Message::Response(
-                                            ClientError::from(file!(),
-                                                "Low option selected")))}
-                                    >{ "Low" }</option>
-                                <option
-                                    value="2"
-                                    onclick={onclick(
-                                        Self::Message::Response(
-                                            ClientError::from(file!(),
-                                                "High option selected")))}
-                                    >{ "High" }</option>
+                                <option onclick={onclick(
+                                    Self::Message::ChangeAnimationLevel(
+                                        AnimationLevel::None))}>{
+                                    "None"
+                                }</option>
+                                <option onclick={onclick(
+                                    Self::Message::ChangeAnimationLevel(
+                                        AnimationLevel::Low))}>{
+                                    "Low"
+                                }</option>
+                                <option onclick={onclick(
+                                    Self::Message::ChangeAnimationLevel(
+                                        AnimationLevel::High))}>{
+                                    "High"
+                                }</option>
                             </select>
                         </form>
                     </div>
