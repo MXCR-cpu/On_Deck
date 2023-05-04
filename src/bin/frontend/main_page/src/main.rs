@@ -7,6 +7,7 @@ use utils_files::sky::Clouds;
 use utils_files::sky::Stars;
 use utils_files::web_error::ClientError;
 use utils_files::window_state::ClientWindow;
+use wasm_bindgen::JsValue;
 use yew::classes;
 use yew::html;
 use yew::prelude::*;
@@ -88,6 +89,18 @@ impl Component for Menu {
                     Pages::Settings => Pages::Main,
                 }
             }
+            Self::Message::ChangePlayerId(new_player_id) => {
+                match self.client_window.set_player_id_tag(new_player_id) {
+                    Ok(()) => {},
+                    Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
+                };
+            }
+            Self::Message::ChangeAnimationLevel(new_level) => {
+                match self.client_window.set_animation_level(new_level) {
+                    Ok(()) => {},
+                    Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
+                }
+            }
             Self::Message::ReceivedId(player_id) => {
                 self.client_window.player_id_tag = Some(player_id.0);
                 self.client_window
@@ -105,6 +118,9 @@ impl Component for Menu {
                         &self.client_window.player_id_key.clone().unwrap(),
                     )
                     .unwrap();
+            }
+            Self::Message::Response(client_error) => {
+                web_sys::console::log_1(&JsValue::from(format!("{}", client_error)));
             }
             _ => {}
         }

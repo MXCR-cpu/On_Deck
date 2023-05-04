@@ -100,8 +100,30 @@ impl ClientWindow {
             }))
     }
 
-    pub fn set_player_id_tag(&mut self, new_player_id_tag: String) {
-        self.player_id_tag = Some(new_player_id_tag);
+    pub fn set_player_id_tag(&mut self, new_player_id_tag: String) -> Result<(), ClientError> {
+        self.player_id_tag = Some(new_player_id_tag.clone());
+        self.local_storage
+            .set_item("player_id_tag", &new_player_id_tag)
+            .map_err(|error: _| {
+                ClientError::from(
+                    file!(),
+                    &format!("new(): Could not update player_id_tag value: {:?}", error),
+                )
+            })?;
+        Ok(())
+    }
+
+    pub fn set_animation_level(&mut self, new_animation_level: u8) -> Result<(), ClientError> {
+        self.animation_level = new_animation_level;
+        self.local_storage
+            .set_item("player_animation_level", &new_animation_level.to_string())
+            .map_err(|error: _| {
+                ClientError::from(
+                    file!(),
+                    &format!("new(): Could not update player_animation_level value: {:?}", error),
+                )
+            })?;
+        Ok(())
     }
 
     pub fn clear_storage(&self) {
