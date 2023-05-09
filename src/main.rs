@@ -7,7 +7,6 @@ use crate::database::DatabaseOption;
 use crate::database::RedisDatabase;
 use battleship::keys::PlayerKeys;
 use battleship::start;
-use battleship::error::evocation;
 use database::json_database;
 use ecies::decrypt;
 use interact::link::{GameList, GameListEntry};
@@ -29,7 +28,8 @@ use rocket::{
 };
 use rocket_db_pools::{Connection, Database};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 pub mod database;
 
@@ -498,7 +498,6 @@ async fn main_files(path: PathBuf) -> Result<NamedFile, NotFound<String>> {
 
 #[launch]
 fn rocket() -> _ {
-    println!("Testing evocation: {}", evocation());
     rocket::build()
         .attach(AdHoc::on_ignite("Compiling and Configuring", |rocket| {
             Box::pin(async {

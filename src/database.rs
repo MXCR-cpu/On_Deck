@@ -41,8 +41,11 @@ pub async fn database<T: ToRedisArgs>(
     {
         Ok(result) => Ok(result),
         Err(error) => Err(format!(
-            "database.rs: database({}): Redis Cmd Failed to execute option query command; {}",
-            option, error
+            "{}, {}: database({}): Redis Cmd Failed to execute option query command; {}",
+            file!(),
+            line!(),
+            option,
+            error
         )),
     }
 }
@@ -59,8 +62,11 @@ pub async fn json_database(
     {
         Ok(result) => Ok(result),
         Err(error) => Err(format!(
-            "database.rs, 47: Redis Cmd Failed to execute `JSON.{}` query command; {}",
-            option, error,
+            "{}, {}: Redis Cmd Failed to execute `JSON.{}` query command; {}",
+            file!(),
+            line!(),
+            option,
+            error,
         )),
     }
 }
