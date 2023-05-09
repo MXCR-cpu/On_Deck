@@ -9,10 +9,22 @@ pub async fn get_request<T: DeserializeOwned>(link: &str) -> Result<T, ClientErr
         .get(link)
         .send()
         .await
-        .map_err(|error: _| ClientError::from(file!(), &format!("get_request(): reqwest failed to send client get request: {}", error)))?
+        .map_err(|error: _| {
+            ClientError::from(
+                file!(),
+                "get_request(): reqwest failed to send client get request",
+            )
+            .push("", &error.to_string())
+        })?
         .json::<T>()
         .await
-        .map_err(|error: _| ClientError::from(file!(), &format!("get_request(): reqwest failed to parse json get request to respective type: {}", error)))
+        .map_err(|error: _| {
+            ClientError::from(
+                file!(),
+                "get_request(): reqwest failed to parse json get request to respective type",
+            )
+            .push("", &error.to_string())
+        })
 }
 
 pub async fn send_player_amount_update<'a>(number_of_players: u8) -> Result<(), ClientError> {
@@ -27,11 +39,9 @@ pub async fn send_player_amount_update<'a>(number_of_players: u8) -> Result<(), 
         .map_err(|error: _| {
             ClientError::from(
                 file!(),
-                &format!(
-                    "send_player_amount_update(): failed to send client post request: {}",
-                    error
-                ),
+                "send_player_amount_update(): failed to send client post request",
             )
+            .push("", &error.to_string())
         })
 }
 
@@ -48,10 +58,8 @@ pub async fn fire_on_position<T: DeserializeOwned + Serialize>(
         .map_err(|error: _| {
             ClientError::from(
                 file!(),
-                &format!(
-                    "fire_on_position(): Failed to Send Fire Post Request: {}",
-                    error
-                ),
+                "fire_on_position(): Failed to Send Fire Post Request",
             )
+            .push("", &error.to_string())
         })
 }

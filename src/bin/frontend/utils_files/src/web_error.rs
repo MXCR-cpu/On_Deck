@@ -21,7 +21,11 @@ impl ClientError {
 
     pub fn push(&self, current_file: &str, new_error: &str) -> Self {
         let mut stack: Vec<String> = self.stack.clone();
-        let current_file_path_buf: String = Self::shorten_path(current_file);
+        let current_file_path_buf: String = if !current_file.is_empty() {
+            Self::shorten_path(current_file)
+        } else {
+            "".to_string()
+        };
         stack.push(format!("{}: {}", current_file_path_buf, new_error));
         Self { stack }
     }
@@ -60,4 +64,3 @@ impl fmt::Display for ClientError {
         )
     }
 }
-
