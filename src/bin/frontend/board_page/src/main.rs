@@ -40,18 +40,24 @@ impl Component for ClientGame {
                 _ctx.link().send_message(Self::Message::Response(error));
                 0
             });
-        let encryption_key: Vec<u8> =
-            serde_json::from_str::<Vec<u8>>(&client_window.player_id_key.clone().unwrap_or_else(|| {
-                _ctx.link().send_message(Self::Message::Response(
-                    ClientError::from(
-                        file!(),
-                        &format!("create(): failed to clone and unwrap the player_id_key field of client_window"))));
+        let encryption_key: Vec<u8> = serde_json::from_str::<Vec<u8>>(
+            &client_window.player_id_key.clone().unwrap_or_else(|| {
+                _ctx.link()
+                    .send_message(Self::Message::Response(ClientError::from(
+                    file!(),
+                    "create(): failed to clone and unwrap the player_id_key field of client_window",
+                )));
                 panic!()
-            })).unwrap_or_else(|_| {
-                _ctx.link().send_message(Self::Message::Response(
-                    ClientError::from(file!(), "create(): failed to parse string with serde_json")));
-                panic!()
-            });
+            }),
+        )
+        .unwrap_or_else(|_| {
+            _ctx.link()
+                .send_message(Self::Message::Response(ClientError::from(
+                    file!(),
+                    "create(): failed to parse string with serde_json",
+                )));
+            panic!()
+        });
         let access_message: String = encrypt(&encryption_key, String::from("Request").as_bytes())
             .unwrap_or_else(|error: SecpError| {
                 _ctx.link().send_message(Self::Message::Response(ClientError::from(
@@ -93,6 +99,7 @@ impl Component for ClientGame {
                 }
                 <div class={classes!("ocean_setting", if self.client_window.day { "ocean_day" } else { "ocean_night" })}>
                     <Board
+                        window={self.client_window.window.clone()}
                         access_key={self.access_message.clone()}
                         player_id_key={self.client_window.player_id_key.clone().unwrap_or_else(|| {
                             _ctx.link().send_message(Self::Message::Response(
@@ -106,7 +113,8 @@ impl Component for ClientGame {
                             ));
                             "".to_string()
                         })}
-                        game_number={self.game_number} />
+                        game_number={self.game_number}
+                        log={true} />
                 </div>
             </div>
         }
@@ -117,7 +125,7 @@ impl ClientGame {
     fn retreive_game_number(client_window: &ClientWindow) -> Result<u32, ClientError> {
         Regex::new(r"\d+")
             .map_err(|error: _| {
-                ClientError::from(file!(), &format!("retreive_game_number(): could not create new regex value: {}", error))
+                ClientError::from(file!(), "retreive_game_number(): could not create new regex value").push("", &error.to_string())
             })?
             .find(
             Regex::new(r"game/\d+")

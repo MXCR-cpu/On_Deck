@@ -154,7 +154,7 @@ impl Component for Menu {
                             <img src={format!("{}/extra_files/Menu_Ship_Night.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
                         </div>
                     }
-                </div>
+            </div>
                 <Navbar
                     window={self.client_window.window.clone()}
                     day={self.client_window.day}

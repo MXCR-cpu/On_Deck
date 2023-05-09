@@ -149,15 +149,22 @@ impl Component for Panel {
                                 file!(),
                                 &format!(
                                     "update(): Failed to update the link of the current window {}",
-                                    js_error
-                                        .as_string()
-                                        .unwrap_or("(Error could not be read to string)".to_string())
+                                    js_error.as_string().unwrap_or(
+                                        "(Error could not be read to string)".to_string()
+                                    )
                                 ),
                             )));
                     }
                 };
             }
             Self::Message::AwaitUpdate => {
+                if ctx.props().log {
+                    ctx.link()
+                        .send_message(Self::Message::Response(ClientError::from(
+                            file!(),
+                            "update(): Executing Update...",
+                        )));
+                }
                 ctx.link().send_future(async move {
                     Self::Message::Update(
                         get_request::<Option<Vec<GameListEntry>>>(
@@ -170,6 +177,18 @@ impl Component for Panel {
             }
             Self::Message::Update(game_links_option) => {
                 self.links = game_links_option;
+                ctx.link()
+                    .send_message(Self::Message::Response(ClientError::from(
+                        file!(),
+                        "update(): Update Executed",
+                    )));
+                if ctx.props().log {
+                    ctx.link()
+                        .send_message(Self::Message::Response(ClientError::from(
+                            file!(),
+                            "update(): Updated Executed",
+                        )));
+                }
             }
             Self::Message::EndUpdate => {
                 self.event_source.close_connection();
