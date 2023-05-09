@@ -326,13 +326,19 @@ async fn get_game_state(
         ));
     }
     let decrypt_key: Vec<u8> = serde_json::from_str(
-        &json_database(
+        match &json_database(
             DatabaseOption::GET,
             &vec![player_id.clone(), ".decryption_key".to_string()],
             &mut rds,
         )
         .await
-        .unwrap(),
+        {
+            Ok(string) => string,
+            Err(err) => {
+                println!("{}", err);
+                ""
+            }
+        },
     )
     .unwrap();
     let vec_access_key: Vec<u8> = (0..access_key.len() / 2)

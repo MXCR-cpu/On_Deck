@@ -9,6 +9,7 @@ use utils_files::request::fire_on_position;
 use utils_files::request::get_request;
 use utils_files::web_error::ClientError;
 use wasm_bindgen::JsValue;
+use web_sys::Window;
 use yew::classes;
 use yew::html;
 use yew::Context;
@@ -35,10 +36,12 @@ pub enum BoardMsg {
 
 #[derive(Properties, PartialEq)]
 pub struct BoardProp {
+    pub window: Window,
     pub access_key: String,
     pub player_id_key: String,
     pub player_id_tag: String,
     pub game_number: u32,
+    pub log: bool,
 }
 
 impl Component for Board {
@@ -54,6 +57,21 @@ impl Component for Board {
             move |_| callback_update.emit(()),
             move |_| callback_end.emit(()),
         );
+        // match ctx.props().window.location().reload() {
+        //     Ok(()) => (),
+        //     Err(error) => ctx.link().send_message(Self::Message::Response(
+        //         ClientError::from(
+        //             file!(),
+        //             "create(): Failed to preform preliminary window reloading",
+        //         )
+        //         .push(
+        //             "",
+        //             &error
+        //                 .as_string()
+        //                 .unwrap_or("(No JsValue Error Provided)".to_string()),
+        //         ),
+        //     )),
+        // }
         Self {
             board: None,
             ships: None,
@@ -68,6 +86,13 @@ impl Component for Board {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Self::Message::AwaitUpdate => {
+                if ctx.props().log {
+                    ctx.link()
+                        .send_message(Self::Message::Response(ClientError::from(
+                            file!(),
+                            "update(): Executing Update...",
+                        )));
+                }
                 self.send_update_request(ctx);
             }
             Self::Message::Update((challenge, player_titles, ship_positions, game_state)) => {
@@ -108,6 +133,13 @@ impl Component for Board {
                 } else {
                     Some(serde_json::from_str::<PositionVectors>(&game_state).unwrap())
                 };
+                if ctx.props().log {
+                    ctx.link()
+                        .send_message(Self::Message::Response(ClientError::from(
+                            file!(),
+                            "update(): Update Executed",
+                        )));
+                }
             }
             Self::Message::EndUpdate => {
                 self.event_source.close_connection();
@@ -156,7 +188,6 @@ impl Component for Board {
             .into_iter()
             .flatten()
             .collect::<Vec<(usize, usize)>>();
-        // This is not memory performant
         let onclick = |index: usize, jndex: usize, to: usize| {
             _ctx.link()
                 .callback(move |_| Self::Message::Fire(index, jndex, to))
