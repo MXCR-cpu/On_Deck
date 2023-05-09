@@ -3,11 +3,14 @@
 extern crate rocket;
 
 use crate::database::{
-    database_get, database_set, json_database_get, json_database_set, RedisDatabase,
+    database,
+    evocation,
+    DatabaseOption,
+    RedisDatabase,
 };
 use battleship::keys::PlayerKeys;
 use battleship::start;
-use database::{json_database_get_simple, database_rename};
+use database::json_database;
 use ecies::decrypt;
 use interact::link::{GameList, GameListEntry};
 use interact::site::SITE_LINK;
@@ -62,13 +65,14 @@ async fn intercept_start() -> Redirect {
 //be securely hidden from the client side
 #[get("/get_player_id")]
 async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(String, String)> {
-    let res: u32 = database_get(&"player_id_count", &mut rds)
+    let res: u32 = database(DatabaseOption::GET, &"player_id_count", &mut rds)
         .await
         .unwrap_or("0".to_string())
         .parse::<u32>()
         .unwrap();
     let player_index: String = format!("player_{res}");
-    database_set(
+    database(
+        DatabaseOption::SET,
         &vec!["player_id_count", (res + 1).to_string().as_str()],
         &mut rds,
     )
@@ -76,61 +80,95 @@ async fn get_player_id(mut rds: Connection<RedisDatabase>) -> Json<(String, Stri
     .unwrap();
     let player_keys: PlayerKeys = PlayerKeys::new();
     player_keys.log(&player_index);
-    json_database_set(&vec![player_index.as_str(), "."], &player_keys, &mut rds)
-        .await
-        .unwrap();
+    json_database(
+        DatabaseOption::SET,
+        &vec![
+            player_index.clone().to_string(),
+            ".".to_string(),
+            (&player_keys).into(),
+        ],
+        &mut rds,
+    )
+    .await
+    .unwrap();
     Json((player_index, player_keys.public_key_string()))
 }
 
 #[post("/change_player_id", format = "json", data = "<player_id_change>")]
 async fn change_player_id(mut rds: Connection<RedisDatabase>, player_id_change: Json<Vec<String>>) {
-    database_rename(&player_id_change.into_inner(), &mut rds)
-        .await
-        .unwrap();
+    database(
+        DatabaseOption::RENAME,
+        &player_id_change.into_inner(),
+        &mut rds,
+    )
+    .await
+    .unwrap();
     return;
 }
 
 #[post("/start", format = "json", data = "<players_obj>")]
 async fn start_game(mut rds: Connection<RedisDatabase>, players_obj: Json<HashMap<String, u8>>) {
     //Updating EventStream call
-    database_set(&vec!["links_update", "true"], &mut rds)
+    database(DatabaseOption::SET, &vec!["links_update", "true"], &mut rds)
         .await
         .unwrap();
     //Updating Game Count Record
     let number_of_players: usize = players_obj.into_inner()["number_of_players"] as usize;
-    let mut game_count: u64 = database_get(&"game_count", &mut rds)
+    let mut game_count: u64 = database(DatabaseOption::GET, &"game_count", &mut rds)
         .await
         .unwrap_or("0".to_string())
         .parse::<u64>()
         .unwrap();
     game_count += 1;
     let new_game: Game = Game::new(number_of_players, game_count);
-    database_set(
+    database(
+        DatabaseOption::SET,
         &vec!["game_count", game_count.to_string().as_str()],
         &mut rds,
     )
     .await
     .unwrap();
     //Actually Setting Up the Game
-    json_database_set::<Game>(
-        &[format!("game_{}", game_count).as_str(), "."],
-        &new_game,
+    json_database(
+        DatabaseOption::SET,
+        &vec![
+            format!("game_{}", game_count),
+            ".".to_string(),
+            (&new_game).into(),
+        ],
         &mut rds,
     )
     .await
     .unwrap();
-    database_set(&vec!["main_page_update", "true"], &mut rds)
+    database(
+        DatabaseOption::SET,
+        &vec!["main_page_update", "true"],
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    let mut current_games: GameList = serde_json::from_str(
+        &json_database(
+            DatabaseOption::GET,
+            &vec!["current_games".to_string(), ".".to_string()],
+            &mut rds,
+        )
         .await
-        .unwrap();
-    //Updating the current game list key
-    let mut current_games: GameList =
-        json_database_get::<_, GameList>(&vec!["current_games", "."], &mut rds)
-            .await
-            .unwrap_or(Vec::new());
+        .unwrap_or("".to_string()),
+    )
+    .unwrap();
     current_games.push(GameListEntry::new(game_count, number_of_players));
-    json_database_set::<GameList>(&["current_games", "."], &current_games, &mut rds)
-        .await
-        .unwrap();
+    json_database(
+        DatabaseOption::SET,
+        &vec![
+            "current_games".to_string(),
+            ".".to_string(),
+            serde_json::to_string(&current_games).unwrap(),
+        ],
+        &mut rds,
+    )
+    .await
+    .unwrap();
 }
 
 #[get("/page_stream")]
@@ -145,9 +183,9 @@ async fn get_page_stream(
                     yield Event::data("end");
                     break;
                 }
-                value = database_get(&"links_update", &mut rds) => {
+                value = database(DatabaseOption::GET, &"links_update", &mut rds) => {
                     if value.unwrap_or("false".to_string()).eq("true") {
-                        database_set(&vec!["links_update", "false"], &mut rds).await.unwrap();
+                        database(DatabaseOption::SET, &vec!["links_update", "false"], &mut rds).await.unwrap();
                         yield Event::data("");
                     }
                 }
@@ -158,7 +196,13 @@ async fn get_page_stream(
 
 #[get("/active_game_links")]
 async fn get_active_game_links(mut rds: Connection<RedisDatabase>) -> Result<String, String> {
-    match json_database_get_simple(&vec!["current_games", "."], &mut rds).await {
+    match json_database(
+        DatabaseOption::GET,
+        &vec!["current_games".to_string(), ".".to_string()],
+        &mut rds,
+    )
+    .await
+    {
         Ok(result) => Ok(result),
         Err(error) => {
             println!("{}", error);
@@ -175,14 +219,19 @@ async fn process_game_request(
     player_id: String,
 ) -> Result<NamedFile, NotFound<String>> {
     let game_tag: String = format!("game_{game_id}");
-    let mut game_state: Game =
-        match json_database_get(&vec![format!("game_{game_id}").as_str(), "."], &mut rds).await {
-            Ok(boards) => boards,
-            Err(error) => {
-                println!("{}", error);
-                panic!()
-            }
-        };
+    let mut game_state: Game = match json_database(
+        DatabaseOption::GET,
+        &vec![format!("game_{game_id}"), ".".to_string()],
+        &mut rds,
+    )
+    .await
+    {
+        Ok(boards) => serde_json::from_str(&boards).unwrap(),
+        Err(error) => {
+            println!("{}", error);
+            panic!()
+        }
+    };
     // Passing game information if it is already filled
     if game_state.player_tags.len() == game_state.number_of_players
         || game_state.player_tags.contains(&player_id)
@@ -190,20 +239,29 @@ async fn process_game_request(
         return return_file(format!("{BOARD_DIR}dist/index.html")).await;
     }
     game_state.player_tags.push(player_id);
-    json_database_set::<Vec<String>>(
-        &[
-            "current_games",
-            &format!(".[{}].active_player_names", game_id - 1),
+    json_database(
+        DatabaseOption::SET,
+        &vec![
+            "current_games".to_string(),
+            format!(".[{}].active_player_names", game_id - 1),
+            serde_json::to_string(&game_state.player_tags).unwrap(),
         ],
-        &game_state.player_tags,
         &mut rds,
     )
     .await
     .unwrap();
     if game_state.player_tags.len() < game_state.number_of_players {
-        json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
-            .await
-            .unwrap();
+        json_database(
+            DatabaseOption::SET,
+            &vec![
+                game_tag,
+                ".".to_string(),
+                serde_json::to_string(&game_state).unwrap(),
+            ],
+            &mut rds,
+        )
+        .await
+        .unwrap();
         return return_file(format!("{BOARD_DIR}dist/index.html")).await;
     }
     // Kick-off the game by creating firing create challenge
@@ -213,16 +271,25 @@ async fn process_game_request(
         .map(char::from)
         .collect::<String>();
     game_state.boards.start_board();
-    database_set(
+    database(
+        DatabaseOption::SET,
         &vec![format!("game_update_{game_id}").as_str(), "true"],
         &mut rds,
     )
     .await
     .unwrap();
-    json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
-        .await
-        .unwrap();
-    database_set(&vec!["links_update", "true"], &mut rds)
+    json_database(
+        DatabaseOption::SET,
+        &vec![
+            game_tag,
+            ".".to_string(),
+            serde_json::to_string(&game_state).unwrap(),
+        ],
+        &mut rds,
+    )
+    .await
+    .unwrap();
+    database(DatabaseOption::SET, &vec!["links_update", "true"], &mut rds)
         .await
         .unwrap();
     return_file(format!("{BOARD_DIR}dist/index.html")).await
@@ -235,14 +302,19 @@ async fn get_game_state(
     player_id: String,
     access_key: String,
 ) -> Json<(String, String, String, String)> {
-    let game_state: Game =
-        match json_database_get(&vec![format!("game_{game_id}").as_str(), "."], &mut rds).await {
-            Ok(boards) => boards,
-            Err(error) => {
-                println!("{}", error);
-                panic!()
-            }
-        };
+    let game_state: Game = match json_database(
+        DatabaseOption::GET,
+        &vec![format!("game_{game_id}"), ".".to_string()],
+        &mut rds,
+    )
+    .await
+    {
+        Ok(boards) => serde_json::from_str(&boards).unwrap(),
+        Err(error) => {
+            println!("{}", error);
+            panic!()
+        }
+    };
     let player_tags_string: String = serde_json::to_string(&game_state.player_tags).unwrap();
     // Spector mode if already filled
     if !game_state.player_tags.contains(&player_id)
@@ -255,10 +327,16 @@ async fn get_game_state(
             serde_json::to_string(&game_state.boards.positions).unwrap(),
         ));
     }
-    let decrypt_key: Vec<u8> =
-        json_database_get(&vec![player_id.as_str(), ".decryption_key"], &mut rds)
-            .await
-            .unwrap();
+    let decrypt_key: Vec<u8> = serde_json::from_str(
+        &json_database(
+            DatabaseOption::GET,
+            &vec![player_id.clone(), ".decryption_key".to_string()],
+            &mut rds,
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
     let vec_access_key: Vec<u8> = (0..access_key.len() / 2)
         .map(|index: usize| {
             i64::from_str_radix(&access_key[(2 * index)..(2 * index) + 2], 16).unwrap() as u8
@@ -308,9 +386,9 @@ async fn get_game_stream(
                     yield Event::data("end");
                     break;
                 }
-                value = database_get(&game_tag, &mut rds) => {
+                value = database(DatabaseOption::GET, &game_tag, &mut rds) => {
                     if value.unwrap_or("false".to_string()).eq("true") {
-                        database_set(&vec![game_tag.as_str(), "false"], &mut rds).await.unwrap();
+                        database(DatabaseOption::SET, &vec![game_tag.as_str(), "false"], &mut rds).await.unwrap();
                         yield Event::data("");
                     }
                 }
@@ -329,26 +407,35 @@ async fn fire(
 ) -> Json<bool> {
     let fire_position: FirePosition = fire_position_json.into_inner();
     let game_tag: String = format!("game_{game_id}");
-    let mut game_state: Game =
-        match json_database_get(&vec![game_tag.as_str(), "."], &mut rds).await {
-            Ok(boards) => boards,
-            Err(error) => {
-                println!("{}", error);
-                panic!()
-            }
-        };
+    let mut game_state: Game = match json_database(
+        DatabaseOption::GET,
+        &vec![game_tag.clone(), ".".to_string()],
+        &mut rds,
+    )
+    .await
+    {
+        Ok(boards) => serde_json::from_str(&boards).unwrap(),
+        Err(error) => {
+            println!("{}", error);
+            panic!()
+        }
+    };
     println!("branch 1: {:b}", game_state.shot_list);
     if (game_state.shot_list & (1 << fire_position.from)) != 0 {
         return Json(false);
     }
-    let decrypt_key: Vec<u8> = json_database_get(
-        &vec![
-            game_state.player_tags[fire_position.from].as_str(),
-            ".decryption_key",
-        ],
-        &mut rds,
+    let decrypt_key: Vec<u8> = serde_json::from_str(
+        &json_database(
+            DatabaseOption::GET,
+            &vec![
+                game_state.player_tags[fire_position.from].clone(),
+                ".decryption_key".to_string(),
+            ],
+            &mut rds,
+        )
+        .await
+        .unwrap(),
     )
-    .await
     .unwrap();
     println!("branch 2: {:b}", game_state.shot_list);
     if !game_state.challenge.eq(&std::str::from_utf8(
@@ -371,7 +458,8 @@ async fn fire(
             - 1)
         == 0
     {
-        database_set(
+        database(
+            DatabaseOption::SET,
             &vec![format!("game_update_{game_id}").as_str(), "true"],
             &mut rds,
         )
@@ -380,9 +468,17 @@ async fn fire(
         game_state.shot_list = 0;
     }
     println!("branch 4: {:b}", game_state.shot_list);
-    json_database_set::<Game>(&vec![game_tag.as_str(), "."], &game_state, &mut rds)
-        .await
-        .unwrap();
+    json_database(
+        DatabaseOption::SET,
+        &vec![
+            game_tag,
+            ".".to_string(),
+            serde_json::to_string(&game_state).unwrap(),
+        ],
+        &mut rds,
+    )
+    .await
+    .unwrap();
     Json(true)
 }
 
@@ -404,6 +500,7 @@ async fn main_files(path: PathBuf) -> Result<NamedFile, NotFound<String>> {
 
 #[launch]
 fn rocket() -> _ {
+    println!("Testing evocation: {}", evocation());
     rocket::build()
         .attach(AdHoc::on_ignite("Compiling and Configuring", |rocket| {
             Box::pin(async {

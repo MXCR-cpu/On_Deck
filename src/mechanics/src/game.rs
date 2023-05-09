@@ -27,3 +27,9 @@ impl Game {
         format!("http://127.0.0.1:8000/game/{}", self.game_number)
     }
 }
+
+impl From<&Game> for String {
+    fn from(game: &Game) -> Self {
+        serde_json::to_string(game).unwrap()
+    }
+}

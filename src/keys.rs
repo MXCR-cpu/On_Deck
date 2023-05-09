@@ -1,11 +1,10 @@
 use ecies::encrypt;
-// use base64::{engine::general_purpose, Engine};
 use ecies::utils::generate_keypair;
 use ecies::PublicKey;
 use ecies::SecretKey;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct PlayerKeys {
     pub decryption_key: Vec<u8>,
     pub encryption_key: Vec<u8>,
@@ -63,5 +62,11 @@ impl std::fmt::Display for PlayerKeys {
             line_buffer(&self.encryption_key),
             line_buffer(&self.decryption_key)
         )
+    }
+}
+
+impl From<&PlayerKeys> for String {
+    fn from(keys: &PlayerKeys) -> Self {
+        serde_json::to_string(keys).unwrap_or("".to_string())
     }
 }

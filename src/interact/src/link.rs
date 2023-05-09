@@ -35,6 +35,10 @@ impl GameListEntry {
     fn is_full(&self) -> bool {
         self.active_player_names.len() == self.total_positions
     }
+
+    pub fn to_string(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
 }
 
 impl fmt::Display for GameListEntry {
@@ -49,3 +53,4 @@ impl fmt::Display for GameListEntry {
         ))
     }
 }
+
