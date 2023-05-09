@@ -3,6 +3,7 @@ use js_sys::Function;
 use web_sys::Event;
 use web_sys::EventSource;
 
+
 #[allow(dead_code)]
 pub struct EventSourceState {
     event_source: EventSource,

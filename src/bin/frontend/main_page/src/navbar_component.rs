@@ -1,5 +1,5 @@
 use web_sys::Window;
-use crate::panel_component::Pages;
+use crate::Pages;
 use yew::{html, Component, Context, Properties, Callback};
 
 const DONATION_MESSAGE: &str =

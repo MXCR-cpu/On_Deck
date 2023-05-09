@@ -1,15 +1,13 @@
-use interact::{
-    link::{GameList, GameListEntry},
-    site::SITE_LINK,
-};
-use utils_files::{
-    animation_level::AnimationLevel,
-    event_source_state::EventSourceState,
-    request::{get_request, send_player_amount_update},
-    web_error::ClientError,
-};
+use interact::link::GameList;
+use interact::link::GameListEntry;
+use interact::site::SITE_LINK;
+use utils_files::animation_level::AnimationLevel;
+use utils_files::event_source_state::EventSourceState;
+use utils_files::request::{get_request, send_player_amount_update};
+use utils_files::web_error::ClientError;
 use wasm_bindgen::JsValue;
 use web_sys::HtmlInputElement;
+use web_sys::Window;
 use yew::{classes, html, Callback, Component, Context, Html, NodeRef, Properties};
 
 #[derive(Clone, PartialEq)]
@@ -33,6 +31,7 @@ pub enum PanelMsg {
     SelectAnimationLevel(AnimationLevel),
     ApplySettings,
     Send(u8),
+    ClickLink(u64),
     AwaitUpdate,
     Update(Option<Vec<GameListEntry>>),
     EndUpdate,
@@ -42,6 +41,7 @@ pub enum PanelMsg {
 
 #[derive(Properties, PartialEq)]
 pub struct PanelProp {
+    pub window: Window,
     pub page_selection: Pages,
     pub player_id_tag: String,
     pub change_player_id: Callback<String>,
@@ -134,6 +134,29 @@ impl Component for Panel {
                     }
                 });
             }
+            Self::Message::ClickLink(entry_number) => {
+                self.event_source.close_connection();
+                match ctx.props().window.location().set_href(&format!(
+                    "{}/game/{}/{}",
+                    SITE_LINK,
+                    entry_number,
+                    ctx.props().player_id_tag
+                )) {
+                    Ok(()) => (),
+                    Err(js_error) => {
+                        ctx.link()
+                            .send_message(Self::Message::Response(ClientError::from(
+                                file!(),
+                                &format!(
+                                    "update(): Failed to update the link of the current window {}",
+                                    js_error
+                                        .as_string()
+                                        .unwrap_or("(Error could not be read to string)".to_string())
+                                ),
+                            )));
+                    }
+                };
+            }
             Self::Message::AwaitUpdate => {
                 ctx.link().send_future(async move {
                     Self::Message::Update(
@@ -191,15 +214,9 @@ impl Component for Panel {
                                     .iter()
                                     .map(|entry: &GameListEntry| html! {
                                         <li><a class={classes!("links", "font")}
-                                            href={format!(
-                                                    "{}/game/{}/{}",
-                                                    SITE_LINK,
-                                                    entry.game_record_number,
-                                                    ctx.props().player_id_tag
-                                                )}>{
-                                                format!("{:#}", entry)
-                                            }</a>
-                                        </li>
+                                            onclick={onclick(Self::Message::ClickLink(entry.game_record_number))}>{
+                                            format!("{:#}", entry)
+                                        }</a></li>
                                     })
                                     .collect::<Html>(),
                                 None => html!{
