@@ -2,14 +2,12 @@
 #[macro_use]
 extern crate rocket;
 
-use crate::database::{
-    database,
-    evocation,
-    DatabaseOption,
-    RedisDatabase,
-};
+use crate::database::database;
+use crate::database::DatabaseOption;
+use crate::database::RedisDatabase;
 use battleship::keys::PlayerKeys;
 use battleship::start;
+use battleship::error::evocation;
 use database::json_database;
 use ecies::decrypt;
 use interact::link::{GameList, GameListEntry};
