@@ -9,10 +9,6 @@ use rocket_db_pools::{
 #[database("redis")]
 pub struct RedisDatabase(Pool);
 
-pub fn evocation() -> String {
-    format!("{}, {}", file!().to_string(), line!().to_string())
-}
-
 pub enum DatabaseOption {
     GET,
     SET,
