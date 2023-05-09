@@ -23,9 +23,10 @@
 	- [X] New salvo round when all players have fired
 	- [ ] End sequence (win / loss)
 - [ ] Settings Panel
-	- [ ] Actually Implement
-	- [ ] Allow Player Id Updating
+	- [X] Actually Implement
+	- [X] Allow Player Id Updating
 	- [ ] Graphics Adjuster (Stars, Clouds, Blur, Animations)
+        - [ ] Change the global animation state
 - [ ] Game Assets (SVG)
 	- [ ] Tab favicon image
 	- [X] Github image
