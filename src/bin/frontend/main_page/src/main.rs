@@ -1,7 +1,7 @@
 use interact::site::SITE_LINK;
-use navbar_component::Navbar;
-use panel_component::Pages;
-use panel_component::Panel;
+use crate::navbar_component::Navbar;
+use crate::panel_component::Pages;
+use crate::panel_component::Panel;
 use utils_files::animation_level::AnimationLevel;
 use utils_files::request::get_request;
 use utils_files::sky::Clouds;
@@ -118,16 +118,14 @@ impl Component for Menu {
                     .local_storage
                     .set_item(
                         "player_id_tag",
-                        &self.client_window.player_id_tag.clone().unwrap(),
-                    )
+                        &self.client_window.player_id_tag.clone().unwrap())
                     .unwrap();
                 self.client_window.player_id_key = Some(player_id.1);
                 self.client_window
                     .local_storage
                     .set_item(
                         "player_id_key",
-                        &self.client_window.player_id_key.clone().unwrap(),
-                    )
+                        &self.client_window.player_id_key.clone().unwrap())
                     .unwrap();
             }
             Self::Message::Response(client_error) => {
@@ -164,6 +162,7 @@ impl Component for Menu {
                     change_day={ctx.link().callback(move |_| Self::Message::ChangeDayState)}
                     change_page={ctx.link().callback(move |_| Self::Message::ChangePage)} />
                 <Panel
+                    window={self.client_window.window.clone()}
                     page_selection={self.page_selection.clone()}
                     player_id_tag={self.client_window.player_id_tag.clone().unwrap_or("".to_string())}
                     change_player_id={ctx.link().callback(move |new_player_id: String| Self::Message::ChangePlayerId(new_player_id))}
