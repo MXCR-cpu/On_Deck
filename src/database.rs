@@ -2,8 +2,6 @@ use rocket_db_pools::{
     deadpool_redis::{redis, redis::ToRedisArgs, Pool},
     Connection, Database,
 };
-// use serde::de::DeserializeOwned;
-// use serde::Serialize;
 
 #[derive(Database)]
 #[database("redis")]
@@ -62,9 +60,10 @@ pub async fn json_database(
     {
         Ok(result) => Ok(result),
         Err(error) => Err(format!(
-            "{}, {}: Redis Cmd Failed to execute `JSON.{}` query command; {}",
+            "{}, {}: json_database({}): Redis Cmd Failed to execute `JSON.{}` query command; {}",
             file!(),
             line!(),
+            option,
             option,
             error,
         )),
