@@ -79,11 +79,13 @@ impl Component for Panel {
                 if self.player_amount_selection < 8 {
                     self.player_amount_selection += 1;
                 }
+                true
             }
             Self::Message::SubPlayer => {
                 if self.player_amount_selection > 2 {
                     self.player_amount_selection -= 1;
                 }
+                true
             }
             Self::Message::SelectAnimationLevel(animation_level) => {
                 if ctx.props().log {
@@ -94,6 +96,7 @@ impl Component for Panel {
                         )));
                 }
                 self.animation_level = animation_level;
+                true
             }
             Self::Message::ApplySettings => {
                 let new_player_id: String = self
@@ -123,6 +126,7 @@ impl Component for Panel {
                     .change_animation_level
                     .emit(self.animation_level.clone());
                 ctx.props().reload_page.emit(());
+                true
             }
             Self::Message::Send(number_of_players) => {
                 ctx.link().send_future(async move {
@@ -133,6 +137,7 @@ impl Component for Panel {
                         ),
                     }
                 });
+                false
             }
             Self::Message::ClickLink(entry_number) => {
                 self.event_source.close_connection();
@@ -156,6 +161,7 @@ impl Component for Panel {
                             )));
                     }
                 };
+                false
             }
             Self::Message::AwaitUpdate => {
                 if ctx.props().log {
@@ -174,6 +180,7 @@ impl Component for Panel {
                         .unwrap_or(None),
                     )
                 });
+                false
             }
             Self::Message::Update(game_links_option) => {
                 self.links = game_links_option;
@@ -189,122 +196,135 @@ impl Component for Panel {
                             "update(): Updated Executed",
                         )));
                 }
+                true
             }
             Self::Message::EndUpdate => {
                 self.event_source.close_connection();
+                false
             }
             Self::Message::Response(client_error) => {
                 web_sys::console::log_1(&JsValue::from(format!("{}", client_error)));
+                false
             }
-            _ => {}
+            _ => false,
         }
-        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let onclick = |message: PanelMsg| ctx.link().callback(move |_| message.clone());
         match ctx.props().page_selection {
-            Pages::Main => html! {
-                <div class={"panel_base"}>
-                    <h2 class={classes!("panel_header", "font")}>{
-                        format!("{} Player Free-for-all Battleship", self.player_amount_selection)
-                    }</h2>
-                    <div class={classes!("menu_screen", "font")}>
-                        <button
-                            class={classes!("menu_button", "button_col_0")}
-                            onclick={onclick(Self::Message::AddPlayer)}>{
-                                "Add Player"
-                            }</button>
-                        <button
-                            class={classes!("menu_button", "button_col_1")}
-                            onclick={onclick(Self::Message::Send(self.player_amount_selection.clone()))}>{
-                                "Start Game"
-                            }</button>
-                        <button
-                            class={classes!("menu_button", "button_col_2")}
-                            onclick={onclick(Self::Message::SubPlayer)}>{
-                                "Subtract Player"
-                            }</button>
-                    </div>
-                    <div class={classes!("links_base", "font")}>
-                        <ul class={"links_holder"}>{
-                            match &self.links {
-                                Some(item) => item
-                                    .iter()
-                                    .map(|entry: &GameListEntry| html! {
-                                        <li><a class={classes!("links", "font")}
-                                            onclick={onclick(Self::Message::ClickLink(entry.game_record_number))}>{
-                                            format!("{:#}", entry)
-                                        }</a></li>
-                                    })
-                                    .collect::<Html>(),
-                                None => html!{
-                                    <p class={"font"}>{
-                                        "Select the number of players and start the game"
-                                    }</p>
-                                }
-                            }
-                        }</ul>
-                    </div>
-                </div>
-            },
-            Pages::Settings => html! {
-                <div class={"panel_base"}>
-                    <h2 class={classes!("panel_header", "font")}>{
-                        "Settings"
-                    }</h2>
-                    <div id="settings_base" class="font">
-                        <form action="" id="settings_form">
-                            <label
-                                for="player_id"
-                                class="settings_label">{
-                                    "Player Id:"
-                                }</label>
-                            <input
-                                type="text"
-                                ref={&self.player_id_ref}
-                                id="player_id"
-                                class="settings_option"
-                                name="fname"
-                                placeholder={ctx.props().player_id_tag.clone()} />
-                            <br/><br/><br/>
-                            <label
-                                for="animation_level"
-                                class="settings_label">{
-                                "Animation Level:"
-                            }</label>
-                            <select
-                                id="animation_level"
-                                class="settings_option">
-                                <option onclick={onclick(
-                                    Self::Message::SelectAnimationLevel(
-                                        AnimationLevel::None))}>{
-                                    "None"
-                                }</option>
-                                <option onclick={onclick(
-                                    Self::Message::SelectAnimationLevel(
-                                        AnimationLevel::Low))}>{
-                                    "Low"
-                                }</option>
-                                <option onclick={onclick(
-                                    Self::Message::SelectAnimationLevel(
-                                        AnimationLevel::High))}>{
-                                    "High"
-                                }</option>
-                            </select>
-                        </form>
-                    </div>
-                    <div id="settings_apply" class="font">
-                        <button onclick={onclick(Self::Message::ApplySettings)}>{
-                            "Apply"
-                        }</button>
-                    </div>
-                </div>
-            },
+            Pages::Main => self.main_page(ctx),
+            Pages::Settings => self.settings_page(ctx),
         }
     }
 
     fn destroy(&mut self, ctx: &yew::Context<Self>) {
         ctx.link().send_message(Self::Message::EndUpdate);
+    }
+}
+
+impl Panel {
+    fn main_page(&self, ctx: &Context<Self>) -> Html {
+        let onclick = |message: PanelMsg| ctx.link().callback(move |_| message.clone());
+        html! {
+            <div class={"panel_base"}>
+                <h2 class={classes!("panel_header", "font")}>{
+                    format!("{} Player Free-for-all Battleship", self.player_amount_selection)
+                }</h2>
+                <div class={classes!("menu_screen", "font")}>
+                    <button
+                        class={classes!("menu_button", "button_col_0")}
+                        onclick={onclick(PanelMsg::AddPlayer)}>{
+                            "Add Player"
+                        }</button>
+                    <button
+                        class={classes!("menu_button", "button_col_1")}
+                        onclick={onclick(PanelMsg::Send(self.player_amount_selection.clone()))}>{
+                            "Start Game"
+                        }</button>
+                    <button
+                        class={classes!("menu_button", "button_col_2")}
+                        onclick={onclick(PanelMsg::SubPlayer)}>{
+                            "Subtract Player"
+                        }</button>
+                </div>
+                <div class={classes!("links_base", "font")}>
+                    <ul class={"links_holder"}>{
+                        match &self.links {
+                            Some(item) => item
+                                .iter()
+                                .map(|entry: &GameListEntry| html! {
+                                    <li><a class={classes!("links", "font")}
+                                        onclick={onclick(PanelMsg::ClickLink(entry.game_record_number))}>{
+                                        format!("{:#}", entry)
+                                    }</a></li>
+                                })
+                                .collect::<Html>(),
+                            None => html!{
+                                <p class={"font"}>{
+                                    "Select the number of players and start the game"
+                                }</p>
+                            }
+                        }
+                    }</ul>
+                </div>
+            </div>
+        }
+    }
+    fn settings_page(&self, ctx: &Context<Self>) -> Html {
+        let onclick = |message: PanelMsg| ctx.link().callback(move |_| message.clone());
+        html! {
+            <div class={"panel_base"}>
+                <h2 class={classes!("panel_header", "font")}>{
+                    "Settings"
+                }</h2>
+                <div id="settings_base" class="font">
+                    <form action="" id="settings_form">
+                        <label
+                            for="player_id"
+                            class="settings_label">{
+                                "Player Id:"
+                            }</label>
+                        <input
+                            type="text"
+                            ref={&self.player_id_ref}
+                            id="player_id"
+                            class="settings_option"
+                            name="fname"
+                            placeholder={ctx.props().player_id_tag.clone()} />
+                        <br/><br/><br/>
+                        <label
+                            for="animation_level"
+                            class="settings_label">{
+                            "Animation Level:"
+                        }</label>
+                        <select
+                            id="animation_level"
+                            class="settings_option">
+                            <option onclick={onclick(
+                                PanelMsg::SelectAnimationLevel(
+                                    AnimationLevel::None))}>{
+                                "None"
+                            }</option>
+                            <option onclick={onclick(
+                                PanelMsg::SelectAnimationLevel(
+                                    AnimationLevel::Low))}>{
+                                "Low"
+                            }</option>
+                            <option onclick={onclick(
+                                PanelMsg::SelectAnimationLevel(
+                                    AnimationLevel::High))}>{
+                                "High"
+                            }</option>
+                        </select>
+                    </form>
+                </div>
+                <div id="settings_apply" class="font">
+                    <button onclick={onclick(PanelMsg::ApplySettings)}>{
+                        "Apply"
+                    }</button>
+                </div>
+            </div>
+        }
+
     }
 }

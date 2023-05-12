@@ -1,5 +1,5 @@
 ## Performance Change:
-- All measurements are in milliseconds
+- All measurements are in milliseconds(ms)
 - Pre-Tera template:
     - Firefox(Librewolf):
         - [106, 145, 166, 82, 107, 127, 79, 249, 109, 211, 144, 151, 307]
@@ -16,3 +16,5 @@
         - median: 66
         - max: 131
         - min: 51
+- With Tera
+    - Firefox(Librewolf):

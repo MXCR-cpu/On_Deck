@@ -1,7 +1,7 @@
-use interact::site::SITE_LINK;
 use crate::navbar_component::Navbar;
 use crate::panel_component::Pages;
 use crate::panel_component::Panel;
+use interact::site::SITE_LINK;
 use utils_files::animation_level::AnimationLevel;
 use utils_files::request::get_request;
 use utils_files::sky::Clouds;
@@ -84,56 +84,67 @@ impl Component for Menu {
                         },
                     )
                     .unwrap();
+                true
             }
             Self::Message::ChangePage => {
                 self.page_selection = match self.page_selection {
                     Pages::Main => Pages::Settings,
                     Pages::Settings => Pages::Main,
-                }
+                };
+                true
             }
             Self::Message::ChangePlayerId(new_player_id) => {
                 match self.client_window.set_player_id_tag(new_player_id) {
                     Ok(()) => (),
                     Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
                 };
+                false
             }
             Self::Message::ChangeAnimationLevel(new_level) => {
                 match self.client_window.set_animation_level(new_level) {
                     Ok(()) => (),
                     Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
                 }
+                true
             }
-            Self::Message::ReloadPage => match self.client_window.window.location().reload() {
-                Ok(()) => (),
-                Err(error) => _ctx
-                    .link()
-                    .send_message(Self::Message::Response(ClientError::from(
-                        file!(),
-                        &format!("update(): Failed to reload page: {:?}", error),
-                    ))),
-            },
+            Self::Message::ReloadPage => {
+                match self.client_window.window.location().reload() {
+                    Ok(()) => (),
+                    Err(error) => {
+                        _ctx.link()
+                            .send_message(Self::Message::Response(ClientError::from(
+                                file!(),
+                                &format!("update(): Failed to reload page: {:?}", error),
+                            )))
+                    }
+                };
+                false
+            }
             Self::Message::ReceivedId(player_id) => {
                 self.client_window.player_id_tag = Some(player_id.0);
                 self.client_window
                     .local_storage
                     .set_item(
                         "player_id_tag",
-                        &self.client_window.player_id_tag.clone().unwrap())
+                        &self.client_window.player_id_tag.clone().unwrap(),
+                    )
                     .unwrap();
                 self.client_window.player_id_key = Some(player_id.1);
                 self.client_window
                     .local_storage
                     .set_item(
                         "player_id_key",
-                        &self.client_window.player_id_key.clone().unwrap())
+                        &self.client_window.player_id_key.clone().unwrap(),
+                    )
                     .unwrap();
+                false
             }
             Self::Message::Response(client_error) => {
                 web_sys::console::log_1(&JsValue::from(format!("{}", client_error)));
+                false
             }
-            _ => {}
+            _ => false,
         }
-        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {

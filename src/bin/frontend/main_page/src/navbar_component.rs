@@ -41,15 +41,16 @@ impl Component for Navbar {
                     .location()
                     .set_href(link.as_str())
                     .unwrap();
+                false
             }
             Self::Message::Alert(message) => {
                 ctx.props()
                     .window
                     .alert_with_message(message.as_str())
                     .unwrap();
+                false
             }
         }
-        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> yew::Html {
