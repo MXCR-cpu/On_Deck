@@ -56,7 +56,7 @@ impl Component for Stars {
                 web_sys::console::log_1(&JsValue::from(format!("{}", error)));
             }
         }
-        true
+        false
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
@@ -163,7 +163,7 @@ impl Component for Clouds {
                 web_sys::console::log_1(&JsValue::from(format!("{}", error)));
             }
         }
-        true
+        false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
