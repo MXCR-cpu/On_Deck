@@ -300,19 +300,22 @@ impl Panel {
                         <select
                             id="animation_level"
                             class="settings_option">
-                            <option onclick={onclick(
-                                PanelMsg::SelectAnimationLevel(
-                                    AnimationLevel::None))}>{
+                            <option
+                                onclick={onclick(PanelMsg::SelectAnimationLevel(
+                                    AnimationLevel::None))}
+                                selected={self.animation_level == AnimationLevel::None}>{
                                 "None"
                             }</option>
-                            <option onclick={onclick(
-                                PanelMsg::SelectAnimationLevel(
-                                    AnimationLevel::Low))}>{
+                            <option
+                                onclick={onclick(PanelMsg::SelectAnimationLevel(
+                                    AnimationLevel::Low))}
+                                selected={self.animation_level == AnimationLevel::Low}>{
                                 "Low"
                             }</option>
-                            <option onclick={onclick(
-                                PanelMsg::SelectAnimationLevel(
-                                    AnimationLevel::High))}>{
+                            <option
+                                onclick={onclick(PanelMsg::SelectAnimationLevel(
+                                    AnimationLevel::High))}
+                                selected={self.animation_level == AnimationLevel::High}>{
                                 "High"
                             }</option>
                         </select>

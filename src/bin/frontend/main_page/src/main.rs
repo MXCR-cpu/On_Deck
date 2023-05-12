@@ -119,17 +119,8 @@ impl Component for Menu {
                             )))
                     }
                 };
-                false
+                true
             }
-            Self::Message::ReloadPage => match self.client_window.window.location().reload() {
-                Ok(()) => (),
-                Err(error) => _ctx
-                    .link()
-                    .send_message(Self::Message::Response(ClientError::from(
-                        file!(),
-                        &format!("update(): Failed to reload page: {:?}", error),
-                    ))),
-            },
             Self::Message::ReceivedId(player_id) => {
                 self.client_window.player_id_tag = Some(player_id.0);
                 self.client_window
@@ -161,21 +152,23 @@ impl Component for Menu {
         html! {
             <div class={classes!("sky_whole", if self.client_window.day { "sky_day" } else { "sky_night" })}>
                 <div class="background">
-                    if self.client_window.day {
-                        <Clouds max_clouds={self.client_window.animation_level.clone() as usize * 5} day={self.client_window.day} />
-                        <div class={classes!("main_screen_ship")}>
-                            <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
-                        </div>
-                    } else {
-                        <svg width="100%" height="100%">
+                    if self.client_window.animation_level != AnimationLevel::None {
+                        if self.client_window.day {
                             <Clouds max_clouds={self.client_window.animation_level.clone() as usize * 5} day={self.client_window.day} />
-                            <Stars max_stars={self.client_window.animation_level.clone() as usize * 100} star_size={2} log={false} />
-                        </svg>
-                        <div class={classes!("main_screen_ship", "ship_night")}>
-                            <img src={format!("{}/extra_files/Menu_Ship_Night.svg", SITE_LINK)} alt={"Ship Riding the Waves"} />
-                        </div>
+                            <div class={classes!("main_screen_ship")}>
+                                <img src={format!("{}/extra_files/Menu_Ship_Day.svg", SITE_LINK)} />
+                            </div>
+                        } else {
+                            <svg width="100%" height="100%">
+                                <Clouds max_clouds={self.client_window.animation_level.clone() as usize * 5} day={self.client_window.day} />
+                                <Stars max_stars={self.client_window.animation_level.clone() as usize * 100} star_size={2} log={false} />
+                            </svg>
+                            <div class={classes!("main_screen_ship", "ship_night")}>
+                                <img src={format!("{}/extra_files/Menu_Ship_Night.svg", SITE_LINK)} />
+                            </div>
+                        }
                     }
-            </div>
+                </div>
                 <Navbar
                     window={self.client_window.window.clone()}
                     day={self.client_window.day}

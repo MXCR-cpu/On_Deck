@@ -22,11 +22,11 @@
 - [ ] Salvo based progression
 	- [X] New salvo round when all players have fired
 	- [ ] End sequence (win / loss)
-- [ ] Settings Panel
+- [X] Settings Panel
 	- [X] Actually Implement
 	- [X] Allow Player Id Updating
-	- [ ] Graphics Adjuster (Stars, Clouds, Blur, Animations)
-        - [ ] Change the global animation state
+	- [X] Graphics Adjuster (Stars, Clouds, Blur, Animations)
+        - [X] Change the global animation state
 - [ ] Game Assets (SVG)
 	- [ ] Tab favicon image
 	- [X] Github image
