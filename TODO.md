@@ -49,6 +49,6 @@
 
 ## Additional
 - [ ] Determine how many players a single instance can support (How many Rocket workers are there?)
-- [ ] Perhaps retry to incorporate Server-Side events into the application again
+- [X] Perhaps retry to incorporate Server-Side events into the application again
 - [X] Investigate a better encryption algorithm that could be used to verify requests.
 - [ ] Investigate if subsequent instances should need to be created in order to support the multitude of individual game_state instances
