@@ -1,0 +1,20 @@
+## Performance Change:
+- All measurements are in milliseconds(ms)
+- Pre-Tera template:
+    - Firefox(Librewolf):
+        - [106, 145, 166, 82, 107, 127, 79, 249, 109, 211, 144, 151, 307]
+        - median: 144
+        - max: 307
+        - min: 79
+    - Chromium:
+        - [113, 119, 70, 63, 50, 65, 120, 64, 110, 95, 63, 105, 128]
+        - median: 95
+        - max: 128
+        - min: 50
+    - Safari
+        - [131, 70, 76, 71, 51, 63, 61, 58, 65, 66, 90, 66, 79]
+        - median: 66
+        - max: 131
+        - min: 51
+- With Tera
+    - Firefox(Librewolf):
