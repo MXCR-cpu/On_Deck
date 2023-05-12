@@ -98,6 +98,7 @@ impl Component for Menu {
                     Ok(()) => (),
                     Err(error) => _ctx.link().send_message(Self::Message::Response(error)),
                 };
+
                 false
             }
             Self::Message::ChangeAnimationLevel(new_level) => {
@@ -120,6 +121,15 @@ impl Component for Menu {
                 };
                 false
             }
+            Self::Message::ReloadPage => match self.client_window.window.location().reload() {
+                Ok(()) => (),
+                Err(error) => _ctx
+                    .link()
+                    .send_message(Self::Message::Response(ClientError::from(
+                        file!(),
+                        &format!("update(): Failed to reload page: {:?}", error),
+                    ))),
+            },
             Self::Message::ReceivedId(player_id) => {
                 self.client_window.player_id_tag = Some(player_id.0);
                 self.client_window

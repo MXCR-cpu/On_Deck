@@ -325,6 +325,5 @@ impl Panel {
                 </div>
             </div>
         }
-
     }
 }
